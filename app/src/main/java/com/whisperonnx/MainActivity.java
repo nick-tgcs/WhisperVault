@@ -158,7 +158,7 @@ public class MainActivity extends AppCompatActivity {
         initModel();
 
         btnInfo = findViewById(R.id.btnInfo);
-        btnInfo.setOnClickListener(view -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/woheller69/whisperIMEplus#Donate"))));
+        btnInfo.setOnClickListener(view -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/nick-tgcs/WhisperVault"))));
 
 
 
@@ -246,7 +246,7 @@ public class MainActivity extends AppCompatActivity {
 
         });
         FreeDroidWarn.showWarningOnUpgrade(this, BuildConfig.VERSION_CODE);
-        if (GithubStar.shouldShowStarDialog(this)) GithubStar.starDialog(this, "https://github.com/woheller69/whisperIMEplus");
+        if (GithubStar.shouldShowStarDialog(this)) GithubStar.starDialog(this, "https://github.com/nick-tgcs/WhisperVault");
         // Assume this Activity is the current activity, check record permission
         checkPermissions();
 
