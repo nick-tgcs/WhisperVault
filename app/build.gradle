@@ -17,7 +17,7 @@ android {
         targetSdk 35
         versionCode 17
         versionName "1.7"
-
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildFeatures {
@@ -27,7 +27,7 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             ndk {
                 abiFilters "arm64-v8a"
@@ -52,21 +52,73 @@ android {
         // Disable including dependency metadata when building Android App Bundles
         includeInBundle = false
     }
+
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
 }
 
 dependencies {
-    implementation 'androidx.appcompat:appcompat:1.7.0'
-    implementation 'com.google.android.material:material:1.12.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.2.0'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'com.google.android.material:material:1.13.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
     implementation 'androidx.preference:preference:1.2.1'
 
-    implementation 'com.google.guava:guava:31.1-android'
-    implementation 'com.github.gkonovalov.android-vad:webrtc:2.0.9'
-    implementation 'com.github.houbb:opencc4j:1.8.1'
+    implementation 'com.google.guava:guava:33.6.0-android'
+    implementation 'com.github.gkonovalov.android-vad:webrtc:2.0.10'
+    implementation 'com.github.houbb:opencc4j:1.14.0'
 
-    //ONNX Runtime
-    implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.19.0'  //latest.release
-    implementation 'com.microsoft.onnxruntime:onnxruntime-extensions-android:0.12.4'   //latest.release
-    implementation 'com.github.woheller69:FreeDroidWarn:+'
+    //ONNX Runtime — versions must stay in sync; see ORT compatibility matrix.
+    // Extensions 0.13.0 is validated against ORT 1.20.x–1.21.x.
+    implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.21.0'
+    implementation 'com.microsoft.onnxruntime:onnxruntime-extensions-android:0.13.0'
+    implementation 'com.github.woheller69:FreeDroidWarn:V1.12'
 
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.14.1'
+    testImplementation 'androidx.test:core:1.6.1'
+    testImplementation 'androidx.test.ext:junit:1.2.1'
+
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
+    androidTestImplementation 'androidx.test:rules:1.6.1'
+    androidTestImplementation 'androidx.test.uiautomator:uiautomator:2.3.0'
+}
+
+// ---------------------------------------------------------------------------
+// E2E model staging
+//
+// UiAutomation.executeShellCommand() exec()s directly (no shell interpreter)
+// and inherits the app's scoped FUSE mount namespace, so it cannot read from
+// /data/local/tmp/ (SELinux) or from paths outside the app's package dir
+// (scoped storage).  The only reliable way to get files onto the device for
+// E2E tests is a host-side `adb shell` command that runs before instrumentation
+// starts.  This task does exactly that.
+//
+// Prerequisites: scripts/setup_e2e_tests.sh must have been run once to push
+// the 6 Whisper ONNX files to /data/local/tmp/whisper_model on the device.
+// ---------------------------------------------------------------------------
+tasks.register('stageModelFilesOnDevice') {
+    group = 'verification'
+    description = 'Copies Whisper model files from /data/local/tmp/whisper_model on the ' +
+            'connected device into the app\'s external files dir so E2E tests find them.'
+    dependsOn 'installDebug'   // install first so the external package dir is created
+    doLast {
+        def androidHome = System.getenv('ANDROID_HOME') ?:
+                "${System.getProperty('user.home')}/Android/Sdk"
+        def adb = "$androidHome/platform-tools/adb"
+        def src = '/data/local/tmp/whisper_model'
+        def dst = '/sdcard/Android/data/org.woheller69.whisperplus/files'
+        exec {
+            commandLine adb, 'shell', "mkdir -p $dst && cp $src/*.onnx $dst/"
+        }
+    }
+}
+
+afterEvaluate {
+    tasks.named('connectedDebugAndroidTest').configure {
+        dependsOn 'stageModelFilesOnDevice'
+    }
 }
