@@ -321,7 +321,8 @@ public class MainActivity extends AppCompatActivity {
     private void checkIntegrityThenLoad() {
         new Thread(() -> {
             File modelDir = getExternalFilesDir(null);
-            List<String> mismatches = ModelIntegrityChecker.getMismatches(modelDir);
+            String modelName = ModelIntegrityChecker.getSelectedModel(MainActivity.this);
+            List<String> mismatches = ModelIntegrityChecker.getMismatches(modelDir, modelName);
             runOnUiThread(() -> {
                 if (mismatches.isEmpty()) {
                     mWhisper.loadModel();
@@ -331,7 +332,7 @@ public class MainActivity extends AppCompatActivity {
                             .setTitle("Model fingerprint mismatch")
                             .setMessage(
                                     "The model files on this device do not match the known " +
-                                    "whisper-small-int8 fingerprint. This is expected if you " +
+                                    modelName + " fingerprint. This is expected if you " +
                                     "installed a different model variant, but could also " +
                                     "indicate file corruption or replacement." +
                                     "\n\nFile(s): " + fileList +

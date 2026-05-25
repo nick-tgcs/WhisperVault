@@ -207,7 +207,8 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         if (mWhisper.isModelReady()) {
             new Thread(() -> {
                 File modelDir = getExternalFilesDir(null);
-                List<String> mismatches = ModelIntegrityChecker.getMismatches(modelDir);
+                String modelName = ModelIntegrityChecker.getSelectedModel(WhisperRecognizeActivity.this);
+                List<String> mismatches = ModelIntegrityChecker.getMismatches(modelDir, modelName);
                 runOnUiThread(() -> {
                     if (mismatches.isEmpty()) {
                         mWhisper.loadModel();
@@ -217,7 +218,7 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
                                 .setTitle("Model fingerprint mismatch")
                                 .setMessage(
                                         "The model files do not match the known " +
-                                        "whisper-small-int8 fingerprint. This may indicate " +
+                                        modelName + " fingerprint. This may indicate " +
                                         "file corruption or replacement." +
                                         "\n\nFile(s): " + fileList +
                                         "\n\nContinue using this model?")

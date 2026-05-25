@@ -12,7 +12,7 @@ android {
     }
     
     defaultConfig {
-        applicationId "io.github.nick-tgcs.whispervault"
+        applicationId "io.github.nick_tgcs.whispervault"
         minSdk 28
         targetSdk 35
         versionCode 17
@@ -110,7 +110,7 @@ tasks.register('stageModelFilesOnDevice') {
                 "${System.getProperty('user.home')}/Android/Sdk"
         def adb = "$androidHome/platform-tools/adb"
         def src = '/data/local/tmp/whisper_model'
-        def dst = '/sdcard/Android/data/io.github.nick-tgcs.whispervault/files'
+        def dst = '/sdcard/Android/data/io.github.nick_tgcs.whispervault/files'
         exec {
             commandLine adb, 'shell', "mkdir -p $dst && cp $src/*.onnx $dst/"
         }

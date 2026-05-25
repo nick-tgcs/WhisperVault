@@ -31,7 +31,7 @@ import static org.junit.Assert.assertNotEquals;
 public class ManifestSecurityTest {
 
     private PackageManager pm;
-    private static final String PKG = "org.woheller69.whisperplus";
+    private static final String PKG = "io.github.nick_tgcs.whispervault";
 
     @Before
     public void setUp() {

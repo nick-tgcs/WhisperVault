@@ -153,7 +153,8 @@ public class WhisperRecognitionService extends RecognitionService {
         if (mWhisper.isModelReady()) {
             new Thread(() -> {
                 File modelDir = getExternalFilesDir(null);
-                List<String> mismatches = ModelIntegrityChecker.getMismatches(modelDir);
+                String modelName = ModelIntegrityChecker.getSelectedModel(WhisperRecognitionService.this);
+                List<String> mismatches = ModelIntegrityChecker.getMismatches(modelDir, modelName);
                 if (!mismatches.isEmpty()) {
                     Log.w(TAG, "Model integrity check failed: " + mismatches);
                     new Handler(Looper.getMainLooper()).post(() ->

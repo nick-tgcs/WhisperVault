@@ -343,7 +343,8 @@ public class WhisperInputMethodService extends InputMethodService {
         if (mWhisper.isModelReady()) {
             new Thread(() -> {
                 File modelDir = getExternalFilesDir(null);
-                List<String> mismatches = ModelIntegrityChecker.getMismatches(modelDir);
+                String modelName = ModelIntegrityChecker.getSelectedModel(WhisperInputMethodService.this);
+                List<String> mismatches = ModelIntegrityChecker.getMismatches(modelDir, modelName);
                 if (!mismatches.isEmpty()) {
                     Log.w(TAG, "Model integrity check failed: " + mismatches);
                     handler.post(() -> Toast.makeText(mContext,

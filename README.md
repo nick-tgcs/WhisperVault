@@ -37,7 +37,7 @@ Please note that for use as voice input (not as IME) there is a separate setting
 
 If after installation you do not find WhisperVault as voice input or only see a limited list (hard-coded ones like Google/Samsung)
 - enable USB debugging
-- type adb shell settings put secure voice_recognition_service io.github.nick-tgcs.whispervault/com.whisperonnx.WhisperRecognitionService
+- type adb shell settings put secure voice_recognition_service io.github.nick_tgcs.whispervault/com.whisperonnx.WhisperRecognitionService
 
 ## Using WhisperVault
 
