@@ -35,6 +35,7 @@ import android.widget.EditText;
 import androidx.activity.OnBackPressedCallback;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
@@ -44,11 +45,13 @@ import com.whisperonnx.asr.Recorder;
 import com.whisperonnx.asr.Whisper;
 import com.whisperonnx.asr.WhisperResult;
 import com.whisperonnx.utils.HapticFeedback;
+import com.whisperonnx.utils.ModelIntegrityChecker;
 import com.whisperonnx.utils.ThemeUtils;
 import com.whisperonnx.voice_translation.neural_networks.voice.Recognizer;
 
 import org.woheller69.freeDroidWarn.FreeDroidWarn;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -270,7 +273,6 @@ public class MainActivity extends AppCompatActivity {
     // Model initialization
     private void initModel() {
         mWhisper = new Whisper(this);
-        mWhisper.loadModel();
         mWhisper.setListener(new Whisper.WhisperListener() {
             @Override
             public void onUpdateReceived(String message) {
@@ -287,7 +289,7 @@ public class MainActivity extends AppCompatActivity {
                 long timeTaken = System.currentTimeMillis() - startTime;
                 runOnUiThread(() -> tvStatus.setText(getString(R.string.processing_done) + timeTaken + "\u2009ms" + "\n"+ getString(R.string.language) + " " + new Locale(whisperResult.getLanguage()).getDisplayLanguage() + " " + (whisperResult.getTask() == ACTION_TRANSCRIBE ? getString(R.string.mode_transcription) : getString(R.string.mode_translation))));
                 runOnUiThread(() -> processingBar.setIndeterminate(false));
-                Log.d(TAG, "Result: " + whisperResult.getResult() + " " + whisperResult.getLanguage() + " " + (whisperResult.getTask() == ACTION_TRANSCRIBE ? "transcribing" : "translating"));
+                if (BuildConfig.DEBUG) Log.d(TAG, "Result: " + whisperResult.getResult() + " " + whisperResult.getLanguage() + " " + (whisperResult.getTask() == ACTION_TRANSCRIBE ? "transcribing" : "translating"));
                 if ((whisperResult.getLanguage().equals("zh")) && (whisperResult.getTask() == ACTION_TRANSCRIBE)){
                     boolean simpleChinese = sp.getBoolean("simpleChinese",false);  //convert to desired Chinese mode
                     String result = simpleChinese ? ZhConverterUtil.toSimple(whisperResult.getResult()) : ZhConverterUtil.toTraditional(whisperResult.getResult());
@@ -300,6 +302,50 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+        // Only run the integrity check + load when the constructor confirmed model files are
+        // present. If files were absent, Whisper already launched SetupActivity.
+        if (mWhisper.isModelReady()) {
+            checkIntegrityThenLoad();
+        }
+    }
+
+    /**
+     * Computes SHA-256 hashes of the model files on a background thread. If all hashes
+     * match the known whisper-small-int8 fingerprint, {@code loadModel()} is called
+     * immediately. Otherwise a non-dismissible warning dialog lets the user choose:
+     * <ul>
+     *   <li><strong>Continue</strong> — load the model as-is (backwards compatible).</li>
+     *   <li><strong>Cancel</strong> — discard the model and return to SetupActivity.</li>
+     * </ul>
+     */
+    private void checkIntegrityThenLoad() {
+        new Thread(() -> {
+            File modelDir = getExternalFilesDir(null);
+            List<String> mismatches = ModelIntegrityChecker.getMismatches(modelDir);
+            runOnUiThread(() -> {
+                if (mismatches.isEmpty()) {
+                    mWhisper.loadModel();
+                } else {
+                    String fileList = android.text.TextUtils.join(", ", mismatches);
+                    new AlertDialog.Builder(this)
+                            .setTitle("Model fingerprint mismatch")
+                            .setMessage(
+                                    "The model files on this device do not match the known " +
+                                    "whisper-small-int8 fingerprint. This is expected if you " +
+                                    "installed a different model variant, but could also " +
+                                    "indicate file corruption or replacement." +
+                                    "\n\nFile(s): " + fileList +
+                                    "\n\nContinue using this model?")
+                            .setPositiveButton("Continue", (d, w) -> mWhisper.loadModel())
+                            .setNegativeButton("Cancel", (d, w) -> {
+                                deinitModel();
+                                startActivity(new Intent(MainActivity.this, SetupActivity.class));
+                            })
+                            .setCancelable(false)
+                            .show();
+                }
+            });
+        }, "integrity-check").start();
     }
 
     private void deinitModel() {

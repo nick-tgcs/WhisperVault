@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
+import com.whisperonnx.BuildConfig;
 import com.whisperonnx.SetupActivity;
 import com.whisperonnx.voice_translation.neural_networks.NeuralNetworkApi;
 import com.whisperonnx.voice_translation.neural_networks.voice.Recognizer;
@@ -40,6 +41,7 @@ public class Whisper {
     private Recognizer recognizer = null;
     private Context mContext;
     private long startTime;
+    private Thread threadProcessRecordBuffer;
 
     public Whisper(Context context) {
         mContext = context;
@@ -47,12 +49,22 @@ public class Whisper {
         //check if model is installed
         File sdcardDataFolder = mContext.getExternalFilesDir(null);
 
-        if (sdcardDataFolder != null && !sdcardDataFolder.exists() && !sdcardDataFolder.mkdirs()) {
+        if (sdcardDataFolder == null) {
+            Log.e(TAG, "External storage unavailable");
+            return;
+        }
+
+        if (!sdcardDataFolder.exists() && !sdcardDataFolder.mkdirs()) {
             Log.e(TAG, "Failed to make directory: " + sdcardDataFolder);
             return;
         }
 
         File[] files = sdcardDataFolder.listFiles();
+
+        if (files == null) {
+            Log.e(TAG, "Unable to list model directory: " + sdcardDataFolder);
+            return;
+        }
 
         int fileCount = 0;
         for (File file : files) {
@@ -65,7 +77,7 @@ public class Whisper {
             intent.addFlags(FLAG_ACTIVITY_NEW_TASK);
             mContext.startActivity(intent);
         } else { // Start thread for RecordBuffer transcription
-            Thread threadProcessRecordBuffer = new Thread(this::processRecordBufferLoop);
+            threadProcessRecordBuffer = new Thread(this::processRecordBufferLoop);
             threadProcessRecordBuffer.start();
         }
 
@@ -92,7 +104,7 @@ public class Whisper {
         recognizer.addCallback(new RecognizerListener() {
             @Override
             public void onSpeechRecognizedResult(String text, String languageCode, double confidenceScore, boolean isFinal) {
-                Log.d(TAG, languageCode + " " + text);
+                if (BuildConfig.DEBUG) Log.d(TAG, languageCode + " " + text);
                 WhisperResult whisperResult = new WhisperResult(text,languageCode, mAction);
 
                 sendResult(whisperResult);
@@ -110,6 +122,10 @@ public class Whisper {
     }
 
     public void unloadModel() {
+        if (threadProcessRecordBuffer != null) {
+            threadProcessRecordBuffer.interrupt();
+            threadProcessRecordBuffer = null;
+        }
         if (recognizer != null) {
             recognizer.destroy();
         }
@@ -145,6 +161,16 @@ public class Whisper {
         return mInProgress.get();
     }
 
+    /**
+     * Returns {@code true} when the Whisper constructor found 6 model files and started
+     * the processing thread. Returns {@code false} when the constructor launched
+     * {@link com.whisperonnx.SetupActivity} because files were absent.
+     * Callers can use this to decide whether to run an integrity check.
+     */
+    public boolean isModelReady() {
+        return threadProcessRecordBuffer != null;
+    }
+
     private void processRecordBufferLoop() {
         while (!Thread.currentThread().isInterrupted()) {
             taskLock.lock();
@@ -164,10 +190,16 @@ public class Whisper {
 
     private void processRecordBuffer() {
         try {
-            if (RecordBuffer.getOutputBuffer() != null) {
+            // getSamples() atomically takes the buffer and clears the slot in a
+            // single operation, so these samples cannot be returned to any other
+            // caller.  An empty array means no recording was waiting; checking
+            // length here avoids a separate getOutputBuffer() null-check that
+            // would re-introduce a time-of-check / time-of-use race.
+            float[] samples = RecordBuffer.getSamples();
+            if (samples.length > 0) {
                 startTime = System.currentTimeMillis();
                 sendUpdate(MSG_PROCESSING);
-                recognizer.recognize(RecordBuffer.getSamples(),1, mLangCode, mAction );
+                recognizer.recognize(samples, 1, mLangCode, mAction);
             } else {
                 sendUpdate("Engine not initialized or file path not set");
             }

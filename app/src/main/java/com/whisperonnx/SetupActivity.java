@@ -18,6 +18,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 
+import com.whisperonnx.utils.ModelIntegrityChecker;
 import com.whisperonnx.utils.ThemeUtils;
 
 import java.io.File;
@@ -26,10 +27,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
+import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class SetupActivity extends AppCompatActivity {
+    private static final String TAG = "SetupActivity";
     ActivityResultLauncher<Intent> install;
     ProgressBar progressBar;
     TextView extractedFileTV;
@@ -82,8 +85,37 @@ public class SetupActivity extends AppCompatActivity {
                 InputStream src = context.getContentResolver().openInputStream(zipFile);
                 try {
                     try (ZipInputStream zipInputStream = new ZipInputStream(src)) {
+                        String canonicalTarget = targetDir.getCanonicalPath() + File.separator;
                         while ((zipEntry = zipInputStream.getNextEntry()) != null) {
-                            File extractedFile = new File(targetDir ,zipEntry.getName());
+                            // Skip directory entries
+                            if (zipEntry.isDirectory()) continue;
+
+                            String entryName = zipEntry.getName();
+
+                            // Reject absolute paths and Windows-style separators before
+                            // canonical-path resolution, which normalises them in ways
+                            // that could silently land inside targetDir.
+                            if (entryName.startsWith("/") || entryName.startsWith("\\")
+                                    || entryName.contains("\\")) {
+                                Log.e(TAG, "Blocked unsafe zip entry (bad name): " + entryName);
+                                continue;
+                            }
+
+                            File extractedFile = new File(targetDir, entryName);
+
+                            // Zip Slip protection: verify entry stays within targetDir
+                            if (!extractedFile.getCanonicalPath().startsWith(canonicalTarget)) {
+                                Log.e(TAG, "Blocked unsafe zip entry: " + entryName);
+                                continue;
+                            }
+
+                            // Ensure any intermediate directories exist
+                            File parentDir = extractedFile.getParentFile();
+                            if (parentDir != null && !parentDir.exists() && !parentDir.mkdirs()) {
+                                Log.e(TAG, "Failed to create directory: " + parentDir);
+                                continue;
+                            }
+
                             runOnUiThread(()->{
                                 extractedFileTV.setVisibility(View.VISIBLE);
                                 extractedFileTV.setText(extractedFile.getName());
@@ -94,18 +126,40 @@ public class SetupActivity extends AppCompatActivity {
                                 }
                             }
                         }
-                        runOnUiThread(()->{
+                        // Hide progress indicators (always, regardless of hash result)
+                        runOnUiThread(() -> {
                             progressBar.setIndeterminate(false);
                             progressBar.setVisibility(View.GONE);
                             extractedFileTV.setVisibility(View.GONE);
-                            startButton.setVisibility(View.VISIBLE);
                         });
+
+                        // Verify SHA-256 hashes — still on background thread
+                        List<String> mismatches = ModelIntegrityChecker.getMismatches(targetDir);
+                        if (mismatches.isEmpty()) {
+                            runOnUiThread(() -> startButton.setVisibility(View.VISIBLE));
+                        } else {
+                            String fileList = android.text.TextUtils.join(", ", mismatches);
+                            runOnUiThread(() -> new androidx.appcompat.app.AlertDialog.Builder(this)
+                                    .setTitle("Model fingerprint mismatch")
+                                    .setMessage(
+                                            "The extracted files do not match the known " +
+                                            "whisper-small-int8 fingerprint. This is expected " +
+                                            "if you installed a different model variant, but " +
+                                            "could also indicate a corrupted or modified file." +
+                                            "\n\nFile(s): " + fileList +
+                                            "\n\nContinue using this model?")
+                                    .setPositiveButton("Continue",
+                                            (d, w) -> startButton.setVisibility(View.VISIBLE))
+                                    .setNegativeButton("Cancel", (d, w) -> d.dismiss())
+                                    .setCancelable(false)
+                                    .show());
+                        }
                     }
                 } catch (IOException ioException) {
-                    ioException.printStackTrace();
+                    Log.e(TAG, "Error extracting zip", ioException);
                 }
             } catch (FileNotFoundException e) {
-                e.printStackTrace();
+                Log.e(TAG, "Zip file not found", e);
             }
         });
         thread.start();

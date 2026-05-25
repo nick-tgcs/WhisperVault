@@ -19,6 +19,7 @@ import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
@@ -28,8 +29,11 @@ import com.whisperonnx.asr.Recorder;
 import com.whisperonnx.asr.Whisper;
 import com.whisperonnx.asr.WhisperResult;
 import com.whisperonnx.utils.HapticFeedback;
+import com.whisperonnx.utils.ModelIntegrityChecker;
 
+import java.io.File;
 import java.util.ArrayList;
+import java.util.List;
 
 public class WhisperRecognizeActivity extends AppCompatActivity {
     private static final String TAG = "WhisperRecognizeActivity";
@@ -180,7 +184,6 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     private void initModel(String langCode) {
 
         mWhisper = new Whisper(this);
-        mWhisper.loadModel();
         mWhisper.setLanguage(langCode);
         Log.d(TAG, "Language code " + langCode);
         mWhisper.setListener(new Whisper.WhisperListener() {
@@ -201,6 +204,31 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
                 }
             }
         });
+        if (mWhisper.isModelReady()) {
+            new Thread(() -> {
+                File modelDir = getExternalFilesDir(null);
+                List<String> mismatches = ModelIntegrityChecker.getMismatches(modelDir);
+                runOnUiThread(() -> {
+                    if (mismatches.isEmpty()) {
+                        mWhisper.loadModel();
+                    } else {
+                        String fileList = android.text.TextUtils.join(", ", mismatches);
+                        new AlertDialog.Builder(WhisperRecognizeActivity.this)
+                                .setTitle("Model fingerprint mismatch")
+                                .setMessage(
+                                        "The model files do not match the known " +
+                                        "whisper-small-int8 fingerprint. This may indicate " +
+                                        "file corruption or replacement." +
+                                        "\n\nFile(s): " + fileList +
+                                        "\n\nContinue using this model?")
+                                .setPositiveButton("Continue", (d, w) -> mWhisper.loadModel())
+                                .setNegativeButton("Cancel", (d, w) -> finish())
+                                .setCancelable(false)
+                                .show();
+                    }
+                });
+            }, "integrity-check").start();
+        }
     }
 
     private void sendResult(String result) {
@@ -249,8 +277,11 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     @Override
     public void onDestroy() {
         deinitModel();
-        if (mRecorder != null && mRecorder.isInProgress()) {
-            mRecorder.stop();
+        if (mRecorder != null) {
+            if (mRecorder.isInProgress()) {
+                mRecorder.stop();
+            }
+            mRecorder.destroy();
         }
         super.onDestroy();
     }

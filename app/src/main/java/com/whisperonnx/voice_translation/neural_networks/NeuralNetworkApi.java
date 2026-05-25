@@ -18,6 +18,8 @@ package com.whisperonnx.voice_translation.neural_networks;
 
 import androidx.annotation.NonNull;
 
+import android.util.Log;
+
 import com.whisperonnx.voice_translation.neural_networks.voice.ErrorCodes;
 
 import java.util.ArrayList;
@@ -29,7 +31,7 @@ import ai.onnxruntime.extensions.OrtxPackage;
 
 public class NeuralNetworkApi {
     private ArrayList<Thread> pendingThreads= new ArrayList<>();
-    public static boolean isVerifying = false;
+    public static volatile boolean isVerifying = false;
 
     protected void addPendingThread(Thread thread){
         pendingThreads.add(thread);
@@ -60,7 +62,7 @@ public class NeuralNetworkApi {
             isVerifying = false;
             initListener.onInitializationFinished();
         } catch (OrtException e) {
-            e.printStackTrace();
+            Log.e("NeuralNetworkApi", "Error testing model integrity", e);
             isVerifying = false;
             initListener.onError(new int[]{ErrorCodes.ERROR_LOADING_MODEL},0);
         }

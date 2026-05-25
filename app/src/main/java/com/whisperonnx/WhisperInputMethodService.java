@@ -31,6 +31,11 @@ import com.whisperonnx.asr.Recorder;
 import com.whisperonnx.asr.Whisper;
 import com.whisperonnx.asr.WhisperResult;
 import com.whisperonnx.utils.HapticFeedback;
+import com.whisperonnx.utils.ModelIntegrityChecker;
+
+import android.widget.Toast;
+import java.io.File;
+import java.util.List;
 
 public class WhisperInputMethodService extends InputMethodService {
     private static final String TAG = "WhisperInputMethodService";
@@ -50,7 +55,7 @@ public class WhisperInputMethodService extends InputMethodService {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Context mContext;
     private CountDownTimer countDownTimer;
-    private static boolean translate = false;
+    private boolean translate = false;
     private boolean modeAuto = false;
     private RelativeLayout layoutButtons;
 
@@ -63,8 +68,11 @@ public class WhisperInputMethodService extends InputMethodService {
     @Override
     public void onDestroy() {
         deinitModel();
-        if (mRecorder != null && mRecorder.isInProgress()) {
-            mRecorder.stop();
+        if (mRecorder != null) {
+            if (mRecorder.isInProgress()) {
+                mRecorder.stop();
+            }
+            mRecorder.destroy();
         }
         super.onDestroy();
     }
@@ -72,7 +80,7 @@ public class WhisperInputMethodService extends InputMethodService {
     @Override
     public void onStartInput(EditorInfo attribute, boolean restarting) {
         if (attribute.inputType ==  EditorInfo.TYPE_NULL) {
-            Log.d(TAG, "Cancelling: onStartInput: inputType=" + attribute.inputType + ", package=" + attribute.packageName + ", fieldId=" + attribute.fieldId);
+            if (BuildConfig.DEBUG) Log.d(TAG, "Cancelling: onStartInput: inputType=" + attribute.inputType + ", package=" + attribute.packageName + ", fieldId=" + attribute.fieldId);
             deinitModel();
             if (mRecorder != null && mRecorder.isInProgress()) {
                 mRecorder.stop();
@@ -100,7 +108,7 @@ public class WhisperInputMethodService extends InputMethodService {
             editor.putInt("langSelected",1);
             editor.putString("language1",langCodeIME);
             editor.putString("language2","auto");
-            editor.commit();
+            editor.apply();
         }
 
         View view = getLayoutInflater().inflate(R.layout.voice_service, null);
@@ -309,7 +317,6 @@ public class WhisperInputMethodService extends InputMethodService {
     private void initModel() {
 
         mWhisper = new Whisper(this);
-        mWhisper.loadModel();
         mWhisper.setListener(new Whisper.WhisperListener() {
             @Override
             public void onUpdateReceived(String message) {
@@ -333,6 +340,19 @@ public class WhisperInputMethodService extends InputMethodService {
                 if (modeAuto && commitSuccess) handler.postDelayed(() -> switchToPreviousInputMethod(), 100);  //slightly delayed, otherwise some apps, e.g. WhatsApp, do not accept the committed text (commitText on inactive InputConnection)
             }
         });
+        if (mWhisper.isModelReady()) {
+            new Thread(() -> {
+                File modelDir = getExternalFilesDir(null);
+                List<String> mismatches = ModelIntegrityChecker.getMismatches(modelDir);
+                if (!mismatches.isEmpty()) {
+                    Log.w(TAG, "Model integrity check failed: " + mismatches);
+                    handler.post(() -> Toast.makeText(mContext,
+                            "Warning: model integrity check failed — files may be modified.",
+                            Toast.LENGTH_LONG).show());
+                }
+                handler.post(() -> mWhisper.loadModel());
+            }, "integrity-check").start();
+        }
     }
 
     private void startTranscription() {

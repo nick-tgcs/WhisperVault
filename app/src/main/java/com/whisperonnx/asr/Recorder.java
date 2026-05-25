@@ -3,6 +3,8 @@ package com.whisperonnx.asr;
 import android.Manifest;
 import android.content.Context;
 import android.content.SharedPreferences;
+
+import androidx.annotation.VisibleForTesting;
 import android.content.pm.PackageManager;
 import android.media.AudioFormat;
 import android.media.AudioManager;
@@ -28,6 +30,15 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class Recorder {
+
+    /**
+     * When non-null, {@link #recordAudio()} skips {@link AudioRecord} entirely and feeds
+     * these raw s16le 16 kHz mono PCM bytes directly into {@link RecordBuffer}.
+     * Set this in instrumented tests before triggering a recording.
+     * Clear it in {@code @After} to avoid leaking between tests.
+     */
+    @VisibleForTesting
+    public static volatile byte[] sTestAudioBytes = null;
 
     public interface RecorderListener {
         void onUpdateReceived(String message);
@@ -102,18 +113,30 @@ public class Recorder {
         Log.d(TAG, "Recording stopped");
         mInProgress.set(false);
 
-        // Wait for the recording thread to finish
+        // Wait for the recording thread to finish.
+        // Use a timeout so that if the worker already called notify() before we
+        // reach wait() (a race that can happen in tests where recording finishes
+        // almost instantly), we don't block forever.
         synchronized (fileSavedLock) {
             try {
-                fileSavedLock.wait(); // Wait until notified by the recording thread
+                fileSavedLock.wait(3000);
             } catch (InterruptedException e) {
-                Thread.currentThread().interrupt(); // Restore interrupted status
+                Thread.currentThread().interrupt();
             }
         }
     }
 
     public boolean isInProgress() {
         return mInProgress.get();
+    }
+
+    /**
+     * Interrupts the background worker thread, causing it to exit its loop and
+     * release any held resources.  Must be called when the owning component is
+     * destroyed (e.g. {@code onDestroy}) to prevent thread leaks.
+     */
+    public void destroy() {
+        workerThread.interrupt();
     }
 
     private void sendUpdate(String message) {
@@ -150,6 +173,19 @@ public class Recorder {
     }
 
     private void recordAudio() {
+        // --- Test injection hook -------------------------------------------
+        // If a test has pre-loaded PCM bytes, skip AudioRecord entirely.
+        if (sTestAudioBytes != null) {
+            byte[] testBytes = sTestAudioBytes;
+            RecordBuffer.setOutputBuffer(testBytes);
+            sendUpdate(testBytes.length > 6400 ? MSG_RECORDING_DONE : MSG_RECORDING_ERROR);
+            synchronized (fileSavedLock) {
+                fileSavedLock.notify();
+            }
+            return;
+        }
+        // ------------------------------------------------------------------
+
         if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             Log.d(TAG, "AudioRecord permission is not granted");
             sendUpdate(mContext.getString(R.string.need_record_audio_permission));

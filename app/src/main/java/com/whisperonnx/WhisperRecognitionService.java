@@ -27,13 +27,16 @@ import com.whisperonnx.asr.Recorder;
 import com.whisperonnx.asr.Whisper;
 import com.whisperonnx.asr.WhisperResult;
 import com.whisperonnx.utils.HapticFeedback;
+import com.whisperonnx.utils.ModelIntegrityChecker;
+import java.io.File;
 import java.util.ArrayList;
+import java.util.List;
 
 public class WhisperRecognitionService extends RecognitionService {
     private static final String TAG = "WhisperRecognitionService";
     private Recorder mRecorder = null;
     private Whisper mWhisper = null;
-    private boolean recognitionCancelled = false;
+    private volatile boolean recognitionCancelled = false;
     private SharedPreferences sp = null;
 
     @Override
@@ -116,7 +119,6 @@ public class WhisperRecognitionService extends RecognitionService {
     private void initModel(Callback callback, String langCode) {
 
         mWhisper = new Whisper(this);
-        mWhisper.loadModel();
         mWhisper.setLanguage(langCode);
         Log.d(TAG, "Language token " + langCode);
         mWhisper.setListener(new Whisper.WhisperListener() {
@@ -126,7 +128,7 @@ public class WhisperRecognitionService extends RecognitionService {
             @Override
             public void onResultReceived(WhisperResult whisperResult) {
                 if (whisperResult.getResult().trim().length() > 0){
-                    Log.d(TAG, whisperResult.getResult().trim());
+                    if (BuildConfig.DEBUG) Log.d(TAG, whisperResult.getResult().trim());
                     try {
                         callback.endOfSpeech();
                         deinitModel();
@@ -148,6 +150,20 @@ public class WhisperRecognitionService extends RecognitionService {
                 }
             }
         });
+        if (mWhisper.isModelReady()) {
+            new Thread(() -> {
+                File modelDir = getExternalFilesDir(null);
+                List<String> mismatches = ModelIntegrityChecker.getMismatches(modelDir);
+                if (!mismatches.isEmpty()) {
+                    Log.w(TAG, "Model integrity check failed: " + mismatches);
+                    new Handler(Looper.getMainLooper()).post(() ->
+                            Toast.makeText(this,
+                                    "Warning: model integrity check failed \u2014 files may be modified.",
+                                    Toast.LENGTH_LONG).show());
+                }
+                new Handler(Looper.getMainLooper()).post(() -> mWhisper.loadModel());
+            }, "integrity-check").start();
+        }
     }
 
     private void startRecording() {
@@ -181,13 +197,18 @@ public class WhisperRecognitionService extends RecognitionService {
     }
 
     @Override
-    public void onDestroy (){
+    public void onDestroy() {
         deinitModel();
+        super.onDestroy();
     }
     private void deinitModel() {
         if (mWhisper != null) {
             mWhisper.unloadModel();
             mWhisper = null;
+        }
+        if (mRecorder != null) {
+            mRecorder.destroy();
+            mRecorder = null;
         }
     }
 

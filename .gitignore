@@ -1,3 +1,8 @@
 /.idea/
 /app/build/
 /.gradle/
+/ai/
+/build/
+/.sdkmanrc
+gradle-*.zip
+local.properties

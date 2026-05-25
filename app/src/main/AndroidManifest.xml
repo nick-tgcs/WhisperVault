@@ -13,9 +13,17 @@
     <uses-permission android:name="android.permission.BLUETOOTH" />
 
     <!--  without this we get: caller doesn't have permission:android.permission.RECORD_AUDIO -->
-    <uses-permission
-        android:name="android.permission.QUERY_ALL_PACKAGES"
-        tools:ignore="QueryAllPackagesPermission" />
+    <!-- REMOVED: QUERY_ALL_PACKAGES was not the correct solution for that error.
+         RECORD_AUDIO permission enforcement is handled by android:permission on the service.
+         Use <queries> instead to declare package visibility requirements. -->
+
+    <queries>
+        <!-- Declare visibility for apps that expose a RecognitionService,
+             required for the IME to enumerate available speech recognisers. -->
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
 
     <application
         android:allowBackup="false"
@@ -38,10 +46,7 @@
 
         <activity android:name=".SetupActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-            </intent-filter>
+            android:exported="false">
         </activity>
 
         <activity
@@ -49,7 +54,6 @@
             android:exported="true"
             android:clearTaskOnLaunch="true"
             android:launchMode="singleInstance"
-            android:visibleToInstantApps="true"
             android:theme="@style/Theme.WhisperFloating"
             android:configChanges="orientation|screenLayout|screenSize|keyboardHidden|keyboard|uiMode|density">
             <intent-filter>
@@ -91,10 +95,7 @@
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
             android:theme="@style/Theme.Whisper.ActionBar"
             android:label="@string/settings"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-            </intent-filter>
+            android:exported="false">
         </activity>
 
     </application>

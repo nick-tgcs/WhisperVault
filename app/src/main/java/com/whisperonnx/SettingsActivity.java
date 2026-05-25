@@ -61,7 +61,7 @@ public class SettingsActivity extends AppCompatActivity {
             editor.putInt("langSelected",1);
             editor.putString("language1",langCodeIME);
             editor.putString("language2","auto");
-            editor.commit();
+            editor.apply();
         }
 
         ImageButton btnLang1 = findViewById(R.id.btnLang1);
