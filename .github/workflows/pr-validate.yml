@@ -112,17 +112,8 @@ jobs:
           profile: pixel_6
           disk-size: 4096M
           script: |
-            # Push the 6 ONNX files to the emulator's durable staging dir.
-            # stageModelFilesOnDevice (Gradle task) will then copy them into
-            # the app's external files dir before instrumentation starts.
             adb shell mkdir -p /data/local/tmp/whisper_model
-            for f in /tmp/whisper_model/*.onnx; do
-              adb push "$f" "/data/local/tmp/whisper_model/"
-            done
-            # Disable animations — required for reliable Espresso timing
-            adb shell settings put global window_animation_scale 0
-            adb shell settings put global transition_animation_scale 0
-            adb shell settings put global animator_duration_scale 0
+            for f in /tmp/whisper_model/*.onnx; do adb push "$f" /data/local/tmp/whisper_model/; done
             ./gradlew connectedDebugAndroidTest
 
       - name: Upload instrumented test results
