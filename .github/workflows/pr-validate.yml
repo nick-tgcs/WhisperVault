@@ -16,8 +16,32 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      docs-only: ${{ steps.check.outputs.docs_only }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - id: check
+        name: Check if only docs changed
+        run: |
+          git diff --name-only origin/${{ github.base_ref }}...HEAD > /tmp/changed.txt
+          echo "Changed files:"; cat /tmp/changed.txt
+          if grep -qvP '\.md$' /tmp/changed.txt; then
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+            echo "Code changes detected – CI will run"
+          else
+            echo "docs_only=true" >> "$GITHUB_OUTPUT"
+            echo "Docs-only changes – CI will be skipped"
+          fi
+
   unit-tests:
     name: Unit tests & lint
+    needs: changes
+    if: needs.changes.outputs.docs-only != 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -54,6 +78,8 @@ jobs:
 
   instrumented-tests:
     name: Instrumented tests
+    needs: changes
+    if: needs.changes.outputs.docs-only != 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -127,3 +153,22 @@ jobs:
         with:
           name: instrumented-test-results
           path: app/build/outputs/androidTest-results/
+
+  ci-gate:
+    name: CI Gate
+    runs-on: ubuntu-latest
+    needs: [unit-tests, instrumented-tests]
+    if: always()
+    steps:
+      - name: Evaluate results
+        run: |
+          UNIT="${{ needs.unit-tests.result }}"
+          INST="${{ needs.instrumented-tests.result }}"
+          # success or skipped (docs-only PR) are both acceptable
+          if [[ "$UNIT" == "success" || "$UNIT" == "skipped" ]] && \
+             [[ "$INST" == "success" || "$INST" == "skipped" ]]; then
+            echo "CI Gate passed (unit-tests=$UNIT, instrumented-tests=$INST)"
+            exit 0
+          fi
+          echo "CI Gate failed (unit-tests=$UNIT, instrumented-tests=$INST)"
+          exit 1
