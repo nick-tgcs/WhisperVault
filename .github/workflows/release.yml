@@ -31,7 +31,11 @@ jobs:
   release:
     name: Build & Release
     runs-on: ubuntu-latest
-    # Skip bot commits on master (e.g. the tag itself); always run on tags/dispatch
+    # Serialize runs so concurrent auto-computes don't race to create the same tag
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    # Skip master pushes whose head commit contains [skip ci]; always run on tags/dispatch
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) ||
@@ -48,8 +52,16 @@ jobs:
         id: tag
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.tag }}" ]]; then
-            # Manual dispatch with an explicit tag (e.g. to release a pre-pushed tag)
+            # Manual dispatch with an explicit tag — validate format and existence
             TAG="${{ inputs.tag }}"
+            if [[ ! "$TAG" =~ ^v[0-9]{4}\.[0-9]{2}\.[0-9]+$ ]]; then
+              echo "::error::Invalid tag format '${TAG}'. Expected vYYYY.MM.N (e.g. v2026.05.1)."
+              exit 1
+            fi
+            if ! git rev-parse --verify "refs/tags/${TAG}" >/dev/null 2>&1; then
+              echo "::error::Tag '${TAG}' does not exist. Push the tag first or leave the input blank to auto-compute."
+              exit 1
+            fi
           elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/* ]]; then
             # Triggered by a tag push
             TAG="${GITHUB_REF#refs/tags/}"
@@ -70,6 +82,10 @@ jobs:
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
           echo "Releasing: ${TAG}"
+
+      - name: Checkout tagged commit (explicit-tag dispatch only)
+        if: github.event_name == 'workflow_dispatch' && inputs.tag != ''
+        run: git checkout "${{ steps.tag.outputs.tag }}"
 
       - name: Set version in build.gradle
         run: |
