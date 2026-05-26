@@ -42,5 +42,7 @@
     <string name="lang2">Language 2</string>
     <string name="setting_bluetooth">Use Bluetooth devices</string>
     <string name="model_selection_label">Model:</string>
+    <string name="default_model_description">Small &#8212; balanced, good accuracy (~250 MB)</string>
+    <string name="downloading_model">Downloading model: %1$s</string>
 
 </resources>

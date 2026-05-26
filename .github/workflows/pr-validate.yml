@@ -1,0 +1,124 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [ master ]
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  unit-tests:
+    name: Unit tests & lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Lint
+        run: ./gradlew lintDebug
+
+      - name: Unit tests
+        run: ./gradlew testDebugUnitTest
+
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lint-report
+          path: app/build/reports/lint-results-debug.html
+
+      - name: Upload unit test report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: unit-test-report
+          path: app/build/reports/tests/testDebugUnitTest/
+
+  instrumented-tests:
+    name: Instrumented tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Install audio tools
+        run: sudo apt-get install -y --no-install-recommends espeak-ng ffmpeg
+
+      - name: Generate speech test asset
+        run: |
+          mkdir -p app/src/androidTest/assets
+          espeak-ng -w /tmp/speech_raw.wav -s 130 "one two three four five"
+          ffmpeg -y -loglevel error \
+            -i /tmp/speech_raw.wav \
+            -ar 16000 -ac 1 -f wav -acodec pcm_s16le \
+            app/src/androidTest/assets/speech_test.wav
+
+      # Cache the extracted .onnx files so the 242 MB download is skipped on
+      # repeat runs.  Bump the cache key suffix (e.g. -v2) to force a refresh.
+      - name: Cache Whisper small-int8 model
+        id: cache-model
+        uses: actions/cache@v5
+        with:
+          path: /tmp/whisper_model
+          key: whisper-small-int8-v1
+
+      # Public model (Apache-2.0) — no authentication required.
+      - name: Download Whisper model from HuggingFace
+        if: steps.cache-model.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p /tmp/whisper_model_dl
+          curl -L --fail --show-error --retry 3 --retry-delay 5 \
+            "https://huggingface.co/huggingface0ddg0/whisperOnnx/resolve/main/whisper_small_int8.zip" \
+            -o /tmp/whisper_model.zip
+          unzip -q /tmp/whisper_model.zip -d /tmp/whisper_model_dl
+          mkdir -p /tmp/whisper_model
+          find /tmp/whisper_model_dl -name "*.onnx" -exec cp {} /tmp/whisper_model/ \;
+          rm -rf /tmp/whisper_model_dl /tmp/whisper_model.zip
+
+      - name: Run instrumented tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          disk-size: 4096M
+          script: |
+            adb shell mkdir -p /data/local/tmp/whisper_model
+            for f in /tmp/whisper_model/*.onnx; do adb push "$f" /data/local/tmp/whisper_model/; done
+            ./gradlew connectedDebugAndroidTest
+
+      - name: Upload instrumented test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: instrumented-test-results
+          path: app/build/outputs/androidTest-results/

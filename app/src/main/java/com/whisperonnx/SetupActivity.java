@@ -8,10 +8,8 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ProgressBar;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -38,21 +36,10 @@ import java.util.zip.ZipInputStream;
 public class SetupActivity extends AppCompatActivity {
     private static final String TAG = "SetupActivity";
 
-    private static final String[] MODEL_IDS = {
-        "whisper_tiny_int8", "whisper_base_int8", "whisper_small_int8", "whisper_medium_int8"
-    };
-    private static final String[] MODEL_LABELS = {
-        "Tiny \u2014 fastest, lowest accuracy (~40 MB)",
-        "Base \u2014 fast, decent accuracy (~80 MB)",
-        "Small \u2014 balanced, good accuracy (~250 MB)",
-        "Medium \u2014 slower, best quality (~750 MB)"
-    };
-
     ActivityResultLauncher<Intent> install;
     ProgressBar progressBar;
     TextView extractedFileTV;
     Button startButton;
-    Spinner modelSpinner;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -62,21 +49,6 @@ public class SetupActivity extends AppCompatActivity {
         progressBar = findViewById(R.id.progress_bar);
         extractedFileTV = findViewById(R.id.extracted_file);
         startButton = findViewById(R.id.button_start);
-        modelSpinner = findViewById(R.id.model_spinner);
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, MODEL_LABELS);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        modelSpinner.setAdapter(adapter);
-        // Restore previously chosen model, defaulting to small
-        String savedModel = PreferenceManager.getDefaultSharedPreferences(this)
-                .getString(ModelIntegrityChecker.PREF_KEY, ModelIntegrityChecker.DEFAULT_MODEL);
-        for (int i = 0; i < MODEL_IDS.length; i++) {
-            if (MODEL_IDS[i].equals(savedModel)) {
-                modelSpinner.setSelection(i);
-                break;
-            }
-        }
-
         File sdcardDataFolder = getExternalFilesDir(null);
 
         install = registerForActivityResult(
@@ -88,13 +60,12 @@ public class SetupActivity extends AppCompatActivity {
     }
 
      public void downloadModel(View v){
-         int pos = modelSpinner.getSelectedItemPosition();
-         String modelId = MODEL_IDS[pos];
+         String modelId = ModelIntegrityChecker.DEFAULT_MODEL;
          PreferenceManager.getDefaultSharedPreferences(this)
                  .edit().putString(ModelIntegrityChecker.PREF_KEY, modelId).apply();
          String url = "https://huggingface.co/huggingface0ddg0/whisperOnnx/resolve/main/"
                  + modelId + ".zip";
-         Toast.makeText(this, "Downloading " + MODEL_LABELS[pos], Toast.LENGTH_SHORT).show();
+         Toast.makeText(this, getString(R.string.downloading_model, modelId), Toast.LENGTH_SHORT).show();
          startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
      }
     public void installModel(View v){

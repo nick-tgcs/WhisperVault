@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark-mode overrides: mirror all base-theme items, override only surfaces -->
+    <style name="Theme.Whisper.NoActionBar" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Base items mirrored from values/themes.xml so they aren't lost at night -->
+        <item name="android:windowBackground">@color/windowBackground</item>
+        <item name="colorPrimary">@color/colorAccentDark</item>
+        <item name="colorSecondary">@color/colorAccentDark</item>
+        <item name="colorTertiary">@color/colorAccentDark</item>
+        <item name="colorOnTertiaryContainer">#90CAF9</item>
+        <!-- Dark neutral surfaces -->
+        <item name="colorSurface">#1E1E1E</item>
+        <item name="colorSurfaceVariant">#2A2A2A</item>
+        <item name="android:colorBackground">#121212</item>
+        <item name="colorSurfaceContainerLowest">#0E0E0E</item>
+        <item name="colorSurfaceContainerLow">#181818</item>
+        <item name="colorSurfaceContainer">#1E1E1E</item>
+        <item name="colorSurfaceContainerHigh">#242424</item>
+        <item name="colorSurfaceContainerHighest">#2A2A2A</item>
+        <!-- Deep-navy containers instead of M3 lavender -->
+        <item name="colorSecondaryContainer">#0D2744</item>
+        <item name="colorOnSecondaryContainer">#90CAF9</item>
+        <item name="colorTertiaryContainer">#0D2744</item>
+    </style>
+
+    <style name="Theme.Whisper.ActionBar" parent="Theme.Material3.DayNight">
+        <!-- Base items mirrored from values/themes.xml so they aren't lost at night -->
+        <item name="android:windowBackground">@color/windowBackground</item>
+        <item name="colorPrimary">@color/colorAccentDark</item>
+        <item name="colorSecondary">@color/colorAccentDark</item>
+        <item name="colorTertiary">@color/colorAccentDark</item>
+        <item name="colorOnTertiaryContainer">#90CAF9</item>
+        <!-- Dark neutral surfaces -->
+        <item name="colorSurface">#1E1E1E</item>
+        <item name="colorSurfaceVariant">#2A2A2A</item>
+        <item name="android:colorBackground">#121212</item>
+        <item name="colorSurfaceContainerLowest">#0E0E0E</item>
+        <item name="colorSurfaceContainerLow">#181818</item>
+        <item name="colorSurfaceContainer">#1E1E1E</item>
+        <item name="colorSurfaceContainerHigh">#242424</item>
+        <item name="colorSurfaceContainerHighest">#2A2A2A</item>
+        <!-- Deep-navy containers instead of M3 lavender -->
+        <item name="colorSecondaryContainer">#0D2744</item>
+        <item name="colorOnSecondaryContainer">#90CAF9</item>
+        <item name="colorTertiaryContainer">#0D2744</item>
+    </style>
+</resources>
