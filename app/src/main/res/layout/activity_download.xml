@@ -63,7 +63,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Small — balanced, good accuracy (~250 MB)"
+                    android:text="@string/default_model_description"
                     android:textAppearance="?attr/textAppearanceBodyMedium"
                     android:layout_marginBottom="16dp" />
 

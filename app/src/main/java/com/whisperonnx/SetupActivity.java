@@ -65,7 +65,7 @@ public class SetupActivity extends AppCompatActivity {
                  .edit().putString(ModelIntegrityChecker.PREF_KEY, modelId).apply();
          String url = "https://huggingface.co/huggingface0ddg0/whisperOnnx/resolve/main/"
                  + modelId + ".zip";
-         Toast.makeText(this, "Downloading Whisper Small model", Toast.LENGTH_SHORT).show();
+         Toast.makeText(this, getString(R.string.downloading_model, modelId), Toast.LENGTH_SHORT).show();
          startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
      }
     public void installModel(View v){

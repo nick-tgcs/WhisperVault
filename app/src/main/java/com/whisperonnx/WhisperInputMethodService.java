@@ -354,7 +354,8 @@ public class WhisperInputMethodService extends InputMethodService {
                             "Warning: model integrity check failed — files may be modified.",
                             Toast.LENGTH_LONG).show());
                 }
-                handler.post(() -> mWhisper.loadModel());
+                Whisper w = mWhisper;
+                if (w != null) handler.post(w::loadModel);
             }, "integrity-check").start();
         }
     }
