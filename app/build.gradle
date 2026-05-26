@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace 'com.whisperonnx'
-    compileSdk 35
+    compileSdk 36
 
     lintOptions{
         disable 'MissingTranslation'
@@ -14,7 +14,7 @@ android {
     defaultConfig {
         applicationId "io.github.nick_tgcs.whispervault"
         minSdk 28
-        targetSdk 35
+        targetSdk 36
         versionCode 17
         versionName "1.7"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -121,8 +121,18 @@ tasks.register('stageModelFilesOnDevice') {
         def adb = "$androidHome/platform-tools/adb"
         def src = '/data/local/tmp/whisper_model'
         def dst = '/sdcard/Android/data/io.github.nick_tgcs.whispervault/files'
-        exec {
-            commandLine adb, 'shell', "mkdir -p $dst && cp $src/*.onnx $dst/"
+        // Check if model files exist on device; skip gracefully in CI where none are staged
+        def checkResult = exec {
+            commandLine adb, 'shell', "ls ${src}/*.onnx 2>/dev/null"
+            ignoreExitValue = true
+        }
+        if (checkResult.exitValue == 0) {
+            exec {
+                commandLine adb, 'shell', "mkdir -p ${dst} && cp ${src}/*.onnx ${dst}/"
+            }
+        } else {
+            logger.lifecycle(':stageModelFilesOnDevice: no .onnx files at ' + src +
+                ' — skipping (instrumented tests will skip via Assume.assumeTrue)')
         }
     }
 }
