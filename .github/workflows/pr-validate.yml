@@ -87,19 +87,12 @@ jobs:
           path: /tmp/whisper_model
           key: whisper-small-int8-v1
 
-      # Add a repo secret HF_TOKEN (a HuggingFace read token) if the model
-      # repository is gated; leave it unset for public repositories.
+      # Public model (Apache-2.0) — no authentication required.
       - name: Download Whisper model from HuggingFace
         if: steps.cache-model.outputs.cache-hit != 'true'
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           mkdir -p /tmp/whisper_model_dl
-          CURL_ARGS=(-L --fail --show-error --retry 3 --retry-delay 5)
-          if [ -n "${HF_TOKEN:-}" ]; then
-            CURL_ARGS+=(-H "Authorization: Bearer ${HF_TOKEN}")
-          fi
-          curl "${CURL_ARGS[@]}" \
+          curl -L --fail --show-error --retry 3 --retry-delay 5 \
             "https://huggingface.co/huggingface0ddg0/whisperOnnx/resolve/main/whisper_small_int8.zip" \
             -o /tmp/whisper_model.zip
           unzip -q /tmp/whisper_model.zip -d /tmp/whisper_model_dl
