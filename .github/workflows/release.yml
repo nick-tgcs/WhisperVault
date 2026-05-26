@@ -24,9 +24,9 @@ jobs:
         run: |
           # TAG_VERSION e.g. "2026.05.3"  (strips the leading 'v')
           TAG_VERSION=${GITHUB_REF#refs/tags/v}
-          # versionCode = base-17 (last manual code) + number of v* tags so far
+          # versionCode = base-17 (last manual code) + number of vYYYY.MM.N tags so far
           BASE_VERSION_CODE=17
-          RELEASE_COUNT=$(git tag -l "v*" | wc -l)
+          RELEASE_COUNT=$(git tag -l "v[0-9]*" | wc -l)
           NEW_VERSION_CODE=$((BASE_VERSION_CODE + RELEASE_COUNT))
           sed -i "s/versionCode [0-9]*/versionCode ${NEW_VERSION_CODE}/" app/build.gradle
           sed -i "s/versionName \".*\"/versionName \"${TAG_VERSION}\"/" app/build.gradle

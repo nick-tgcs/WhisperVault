@@ -18,8 +18,6 @@ jobs:
   tag:
     name: Create version tag
     runs-on: ubuntu-latest
-    # Skip commits created by this workflow (e.g. bot commits marked [skip ci])
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
 
     steps:
       - uses: actions/checkout@v6
