@@ -58,14 +58,14 @@
                     android:text="@string/model_selection_label"
                     android:textAppearance="?attr/textAppearanceLabelLarge"
                     android:textColor="?attr/colorPrimary"
-                    android:layout_marginBottom="8dp" />
+                    android:layout_marginBottom="4dp" />
 
-                <Spinner
-                    android:id="@+id/model_spinner"
-                    android:layout_width="match_parent"
+                <TextView
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    android:minWidth="220dp" />
+                    android:text="Small — balanced, good accuracy (~250 MB)"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:layout_marginBottom="16dp" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/download_button"

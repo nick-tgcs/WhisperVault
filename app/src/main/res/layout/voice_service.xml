@@ -110,15 +110,15 @@
         android:id="@+id/layout_buttons"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:paddingTop="12dp"
-        android:paddingBottom="16dp">
+        android:paddingStart="22dp"
+        android:paddingEnd="22dp"
+        android:paddingTop="17dp"
+        android:paddingBottom="22dp">
 
         <ImageButton
             android:id="@+id/btnRecord"
-            android:layout_width="72dp"
-            android:layout_height="72dp"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
             android:layout_centerHorizontal="true"
             android:background="@drawable/rounded_button_background"
             android:src="@drawable/ic_mic_48dp"
@@ -126,24 +126,24 @@
 
         <ImageButton
             android:id="@+id/btnDel"
-            android:layout_width="52dp"
-            android:layout_height="52dp"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
             android:layout_centerVertical="true"
             android:layout_alignParentStart="true"
             android:background="@drawable/ime_ghost_button_bg"
             android:src="@drawable/ic_keyboard_del_48dp"
-            android:padding="10dp"
+            android:padding="20dp"
             android:contentDescription="@string/delete_button" />
 
         <ImageButton
             android:id="@+id/btnEnter"
-            android:layout_width="52dp"
-            android:layout_height="52dp"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
             android:layout_centerVertical="true"
             android:layout_alignParentEnd="true"
             android:background="@drawable/ime_ghost_button_bg"
             android:src="@drawable/ic_keyboard_return_48dp"
-            android:padding="10dp"
+            android:padding="20dp"
             android:contentDescription="@string/return_button" />
 
     </RelativeLayout>
