@@ -49,7 +49,6 @@ import com.whisperonnx.utils.ModelIntegrityChecker;
 import com.whisperonnx.utils.ThemeUtils;
 import com.whisperonnx.voice_translation.neural_networks.voice.Recognizer;
 
-import org.woheller69.freeDroidWarn.FreeDroidWarn;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -245,7 +244,6 @@ public class MainActivity extends AppCompatActivity {
             }
 
         });
-        FreeDroidWarn.showWarningOnUpgrade(this, BuildConfig.VERSION_CODE);
         if (GithubStar.shouldShowStarDialog(this)) GithubStar.starDialog(this, "https://github.com/nick-tgcs/WhisperVault");
         // Assume this Activity is the current activity, check record permission
         checkPermissions();
