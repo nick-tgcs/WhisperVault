@@ -3,6 +3,15 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+signingConfigs {
+    release {
+        storeFile file(System.getenv("KEYSTORE_PATH") ?: "whispervault-release.jks")
+        storePassword System.getenv("KEYSTORE_PASSWORD") ?: ""
+        keyAlias System.getenv("KEY_ALIAS") ?: "whispervault"
+        keyPassword System.getenv("KEY_PASSWORD") ?: System.getenv("KEYSTORE_PASSWORD") ?: ""
+    }
+}
+
 android {
     namespace 'com.whisperonnx'
     compileSdk 35
@@ -27,6 +36,7 @@ android {
 
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             ndk {
