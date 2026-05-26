@@ -35,14 +35,14 @@ jobs:
 
       - name: Upload lint report
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: lint-report
           path: app/build/reports/lint-results-debug.html
 
       - name: Upload unit test report
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: unit-test-report
           path: app/build/reports/tests/testDebugUnitTest/
@@ -85,7 +85,7 @@ jobs:
       # repeat runs.  Bump the cache key suffix (e.g. -v2) to force a refresh.
       - name: Cache Whisper small-int8 model
         id: cache-model
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: /tmp/whisper_model
           key: whisper-small-int8-v1
@@ -118,7 +118,7 @@ jobs:
 
       - name: Upload instrumented test results
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: instrumented-test-results
           path: app/build/outputs/androidTest-results/
