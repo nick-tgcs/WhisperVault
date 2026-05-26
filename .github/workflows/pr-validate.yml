@@ -2,7 +2,12 @@ name: PR Validation
 
 on:
   pull_request:
-    branches: [ master ]
+    branches: [ master, develop ]
+
+# Cancel any in-progress run for the same PR when a new commit is pushed.
+concurrency:
+  group: pr-validate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -22,7 +27,7 @@ jobs:
 
       - uses: actions/setup-java@v5
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - uses: gradle/actions/setup-gradle@v6
@@ -58,7 +63,7 @@ jobs:
 
       - uses: actions/setup-java@v5
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - uses: gradle/actions/setup-gradle@v6
