@@ -1,36 +1,86 @@
 name: Build & Release
 
+# Triggers:
+#   1. push to master      → auto-computes next vYYYY.MM.N tag, builds & releases
+#   2. push of a v* tag    → uses that tag (manual tag push fallback)
+#   3. workflow_dispatch   → manual trigger; pass a tag to release an existing
+#                            tag (e.g. v2026.05.1) or leave blank to auto-compute
+#
+# Why combined: GITHUB_TOKEN-pushed tags cannot trigger other workflows, so
+# auto-version.yml pushing a tag would never fire release.yml.  Doing
+# everything in one job sidesteps that GitHub limitation entirely.
+
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [master]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v2026.05.1). Leave blank to auto-compute.'
+        required: false
+        default: ''
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+permissions:
+  contents: write
+
 jobs:
-  build:
+  release:
+    name: Build & Release
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    # Skip bot commits on master (e.g. the tag itself); always run on tags/dispatch
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/master' &&
+       !contains(github.event.head_commit.message, '[skip ci]'))
 
     steps:
       - uses: actions/checkout@v6
         with:
           submodules: true
-          fetch-depth: 0   # full history so we can count tags for versionCode
+          fetch-depth: 0   # full history needed to enumerate tags
 
-      - name: Set version from tag
+      - name: Resolve or compute version tag
+        id: tag
         run: |
-          # TAG_VERSION e.g. "2026.05.3"  (strips the leading 'v')
-          TAG_VERSION=${GITHUB_REF#refs/tags/v}
-          # versionCode = base-17 (last manual code) + number of vYYYY.MM.N tags so far
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.tag }}" ]]; then
+            # Manual dispatch with an explicit tag (e.g. to release a pre-pushed tag)
+            TAG="${{ inputs.tag }}"
+          elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/* ]]; then
+            # Triggered by a tag push
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            # Auto-compute next vYYYY.MM.N tag for push-to-master or blank dispatch
+            YEAR=$(date -u +%Y)
+            MONTH=$(date -u +%m)
+            PREFIX="v${YEAR}.${MONTH}."
+            LAST=$(git tag -l "${PREFIX}*" | sed "s|${PREFIX}||" | sort -n | tail -1)
+            if [ -z "$LAST" ]; then COUNT=1; else COUNT=$((LAST + 1)); fi
+            TAG="${PREFIX}${COUNT}"
+            # Push the tag (GITHUB_TOKEN pushes don't re-trigger workflows)
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag "$TAG"
+            git push origin "$TAG"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "Releasing: ${TAG}"
+
+      - name: Set version in build.gradle
+        run: |
+          VERSION="${{ steps.tag.outputs.version }}"
           BASE_VERSION_CODE=17
-          RELEASE_COUNT=$(git tag -l "v[0-9]*" | wc -l)
+          # Count only vYYYY.* tags (4-digit year) — excludes legacy v1.7
+          RELEASE_COUNT=$(git tag -l "v[0-9][0-9][0-9][0-9].*" | wc -l)
           NEW_VERSION_CODE=$((BASE_VERSION_CODE + RELEASE_COUNT))
           sed -i "s/versionCode [0-9]*/versionCode ${NEW_VERSION_CODE}/" app/build.gradle
-          sed -i "s/versionName \".*\"/versionName \"${TAG_VERSION}\"/" app/build.gradle
-          echo "Building versionName=${TAG_VERSION} versionCode=${NEW_VERSION_CODE}"
+          sed -i "s/versionName \".*\"/versionName \"${VERSION}\"/" app/build.gradle
+          echo "versionName=${VERSION} versionCode=${NEW_VERSION_CODE}"
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -53,8 +103,9 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assembleRelease
 
-      - name: Upload APK to GitHub Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ steps.tag.outputs.tag }}
           files: app/build/outputs/apk/release/app-release.apk
           generate_release_notes: true
