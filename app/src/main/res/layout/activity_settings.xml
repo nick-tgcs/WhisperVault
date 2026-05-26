@@ -1,207 +1,232 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true">
-    <ScrollView
+
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent">
+
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingHorizontal="20dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="32dp">
+
+            <!-- ── IME Settings ───────────────────────────── -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginVertical="10dp"
-                android:textSize="20dp"
+                android:layout_marginBottom="12dp"
                 android:text="@string/settings_ime"
-                />
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorPrimary" />
+
+            <!-- Lang slot 1 -->
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="10dp"
+                android:layout_height="48dp"
+                android:layout_marginBottom="8dp"
+                android:gravity="center_vertical"
                 android:orientation="horizontal">
+
                 <ImageButton
                     android:id="@+id/btnLang1"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@null"
-                    android:layout_gravity="center_vertical"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
                     android:src="@drawable/ic_counter_1_off_36dp"
-                    android:contentDescription="@string/lang1"/>
+                    android:contentDescription="@string/lang1" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center_vertical"
-                    android:layout_marginStart="5dp"
-                    android:textSize="16sp"
-                    android:textColor="@color/colorAccent"
-                    android:text="@string/language" />
+                    android:layout_marginStart="8dp"
+                    android:text="@string/language"
+                    android:textAppearance="?attr/textAppearanceLabelLarge" />
 
                 <Spinner
                     android:id="@+id/spnrLanguage1_ime"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center_vertical"
-                    android:layout_weight="1" />
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp" />
             </LinearLayout>
+
+            <!-- Lang slot 2 -->
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="10dp"
+                android:layout_height="48dp"
+                android:layout_marginBottom="8dp"
+                android:gravity="center_vertical"
                 android:orientation="horizontal">
+
                 <ImageButton
                     android:id="@+id/btnLang2"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@null"
-                    android:layout_gravity="center_vertical"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
                     android:src="@drawable/ic_counter_2_off_36dp"
-                    android:contentDescription="@string/lang1"/>
+                    android:contentDescription="@string/lang2" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center_vertical"
-                    android:layout_marginStart="5dp"
-                    android:textSize="16sp"
-                    android:textColor="@color/colorAccent"
-                    android:text="@string/language" />
+                    android:layout_marginStart="8dp"
+                    android:text="@string/language"
+                    android:textAppearance="?attr/textAppearanceLabelLarge" />
 
                 <Spinner
                     android:id="@+id/spnrLanguage2_ime"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center_vertical"
-                    android:layout_weight="1" />
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp" />
             </LinearLayout>
+
+            <!-- Simple Chinese (IME) -->
             <LinearLayout
                 android:id="@+id/layout_mode_chinese_ime"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:visibility="visible"
-                android:gravity="start">
+                android:layout_height="48dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:textSize="16sp"
-                    android:textColor="@color/colorAccent"
-                    android:text="@string/simple_chinese" />
+                    android:layout_weight="1"
+                    android:text="@string/simple_chinese"
+                    android:textAppearance="?attr/textAppearanceLabelLarge" />
 
-                <CheckBox
+                <com.google.android.material.materialswitch.MaterialSwitch
                     android:id="@+id/mode_simple_chinese_ime"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:minWidth="0dp"
-                    android:minHeight="0dp"
-                    android:contentDescription="@string/simple_chinese"/>
-
+                    android:contentDescription="@string/simple_chinese" />
             </LinearLayout>
 
+            <!-- Divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginVertical="16dp"
+                android:background="?attr/colorSurfaceVariant" />
 
+            <!-- ── Voice Input Settings ───────────────────── -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginVertical="10dp"
-                android:textSize="20dp"
+                android:layout_marginBottom="12dp"
                 android:text="@string/settings_voice_input"
-            />
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorPrimary" />
 
+            <!-- Language -->
             <LinearLayout
                 android:id="@+id/layout_language"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:layout_marginBottom="8dp"
+                android:gravity="center_vertical"
                 android:orientation="horizontal">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="16sp"
-                    android:textColor="@color/colorAccent"
-                    android:text="@string/language" />
+                    android:text="@string/language"
+                    android:textAppearance="?attr/textAppearanceLabelLarge" />
 
                 <Spinner
                     android:id="@+id/spnrLanguage"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1" />
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp" />
             </LinearLayout>
+
+            <!-- Simple Chinese (voice) -->
             <LinearLayout
                 android:id="@+id/layout_mode_chinese"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="start">
+                android:layout_height="48dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:textSize="16sp"
-                    android:textColor="@color/colorAccent"
-                    android:text="@string/simple_chinese" />
+                    android:layout_weight="1"
+                    android:text="@string/simple_chinese"
+                    android:textAppearance="?attr/textAppearanceLabelLarge" />
 
-                <CheckBox
+                <com.google.android.material.materialswitch.MaterialSwitch
                     android:id="@+id/mode_simple_chinese"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:minWidth="0dp"
-                    android:minHeight="0dp"
-                    android:contentDescription="@string/simple_chinese"/>
-
+                    android:contentDescription="@string/simple_chinese" />
             </LinearLayout>
+
+            <!-- Divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginVertical="16dp"
+                android:background="?attr/colorSurfaceVariant" />
+
+            <!-- ── General Settings ───────────────────────── -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginVertical="10dp"
-                android:textSize="20dp"
+                android:layout_marginBottom="12dp"
                 android:text="@string/settings_general"
-                />
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorPrimary" />
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:textSize="16sp"
-                android:textColor="@color/colorAccent"
-                android:text="@string/settings_minimum_silence" />
+                android:layout_marginBottom="4dp"
+                android:text="@string/settings_minimum_silence"
+                android:textAppearance="?attr/textAppearanceLabelLarge" />
 
             <com.google.android.material.slider.RangeSlider
                 android:id="@+id/settings_min_silence"
-                android:layout_width="wrap_content"
-                android:layout_height="8sp"
-                android:gravity="center_vertical"
-                android:valueFrom = "0"
-                android:valueTo = "3000"
-                android:stepSize = "100"
-                />
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:valueFrom="0"
+                android:valueTo="3000"
+                android:stepSize="100" />
+
+            <!-- Bluetooth -->
             <LinearLayout
                 android:id="@+id/layout_mode_bluetooth"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="start">
+                android:layout_height="48dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:textSize="16sp"
-                    android:textColor="@color/colorAccent"
-                    android:text="@string/setting_bluetooth" />
+                    android:layout_weight="1"
+                    android:text="@string/setting_bluetooth"
+                    android:textAppearance="?attr/textAppearanceLabelLarge" />
 
-                <CheckBox
+                <com.google.android.material.materialswitch.MaterialSwitch
                     android:id="@+id/mode_bluetooth"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:minWidth="0dp"
-                    android:minHeight="0dp"
-                    android:contentDescription="@string/setting_bluetooth"/>
+                    android:contentDescription="@string/setting_bluetooth" />
             </LinearLayout>
+
         </LinearLayout>
-    </ScrollView>
+    </androidx.core.widget.NestedScrollView>
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

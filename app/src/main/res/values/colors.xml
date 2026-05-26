@@ -3,7 +3,10 @@
     <color name="black">#FF000000</color>
     <color name="lightGrey">#DDDDDD</color>
     <color name="darkGrey">#999999</color>
-    <color name="colorAccent">#996750A4</color>
-    <color name="colorAccentDark">#ff6750A4</color>
+    <color name="colorAccent">#991976D2</color>
+    <color name="colorAccentDark">#ff1976D2</color>
     <color name="windowBackground">#FAFAFA</color>
+    <!-- IME panel dark surface -->
+    <color name="ime_surface">#1C1B1F</color>
+    <color name="ime_strip_surface">#2A2930</color>
 </resources>

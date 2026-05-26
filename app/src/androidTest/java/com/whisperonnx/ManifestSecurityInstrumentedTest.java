@@ -29,7 +29,7 @@ import static org.junit.Assert.assertNotEquals;
 @RunWith(AndroidJUnit4.class)
 public class ManifestSecurityInstrumentedTest {
 
-    private static final String PKG = "org.woheller69.whisperplus";
+    private static final String PKG = "io.github.nick_tgcs.whispervault";
 
     @Rule
     public GrantPermissionRule permissionRule =

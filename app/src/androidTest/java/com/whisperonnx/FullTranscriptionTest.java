@@ -40,7 +40,7 @@ import static org.junit.Assert.assertTrue;
  * <ol>
  *   <li>Downloads the {@code whisper_small_int8} model and pushes the 6 ONNX files
  *       to the emulator at the path the app reads them from
- *       ({@code /sdcard/Android/data/org.woheller69.whisperplus/files/}).</li>
+ *       ({@code /sdcard/Android/data/io.github.nick_tgcs.whispervault/files/}).</li>
  *   <li>Generates a short speech WAV using espeak-ng + ffmpeg and places it in
  *       {@code app/src/androidTest/assets/speech_test.wav} (packaged into the test APK).</li>
  * </ol>

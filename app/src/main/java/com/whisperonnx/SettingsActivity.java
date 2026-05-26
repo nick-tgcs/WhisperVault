@@ -11,9 +11,9 @@ import android.util.Pair;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
-import android.widget.CheckBox;
 import android.widget.ImageButton;
 import android.widget.Spinner;
+import com.google.android.material.materialswitch.MaterialSwitch;
 import android.widget.Toast;
 
 
@@ -37,9 +37,9 @@ public class SettingsActivity extends AppCompatActivity {
     private Spinner spinnerLanguage;
     private Spinner spinnerLanguage1IME;
     private Spinner spinnerLanguage2IME;
-    private CheckBox modeSimpleChinese;
-    private CheckBox modeSimpleChineseIME;
-    private CheckBox modeBluetooth;
+    private MaterialSwitch modeSimpleChinese;
+    private MaterialSwitch modeSimpleChineseIME;
+    private MaterialSwitch modeBluetooth;
     private String langCodeIME = "";
     private RangeSlider minSilence;
     private int langSelected;

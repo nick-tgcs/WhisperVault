@@ -58,7 +58,7 @@ public class AppLaunchTest {
     @Test
     public void appContext_hasCorrectPackageName() {
         assertEquals(
-            "org.woheller69.whisperplus",
+            "io.github.nick_tgcs.whispervault",
             InstrumentationRegistry.getInstrumentation()
                 .getTargetContext()
                 .getPackageName()

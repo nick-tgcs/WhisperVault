@@ -70,7 +70,7 @@ public final class E2ETestHelper {
     };
 
     private static final String IME_COMPONENT =
-            "org.woheller69.whisperplus/com.whisperonnx.WhisperInputMethodService";
+            "io.github.nick_tgcs.whispervault/com.whisperonnx.WhisperInputMethodService";
 
     private E2ETestHelper() {}
 

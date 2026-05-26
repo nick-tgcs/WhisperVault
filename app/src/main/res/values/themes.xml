@@ -1,14 +1,50 @@
 <resources>
     <!-- Base application theme. -->
     <style name="Theme.Whisper.NoActionBar" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
         <item name="android:windowBackground">@color/windowBackground</item>
+        <item name="colorPrimary">@color/colorAccentDark</item>
+        <item name="colorSecondary">@color/colorAccentDark</item>
+        <!-- Neutral surfaces: suppress M3's auto-generated lavender/purple tint -->
+        <item name="colorSurface">#FFFFFF</item>
+        <item name="colorSurfaceVariant">#F0F2F4</item>
+        <item name="android:colorBackground">#FAFAFA</item>
+        <!-- M3 1.2+ container tokens — action bar uses colorSurfaceContainer -->
+        <item name="colorSurfaceContainerLowest">#FFFFFF</item>
+        <item name="colorSurfaceContainerLow">#F8F8F8</item>
+        <item name="colorSurfaceContainer">#F4F4F4</item>
+        <item name="colorSurfaceContainerHigh">#EEEEEE</item>
+        <item name="colorSurfaceContainerHighest">#E8E8E8</item>
+        <!-- Align tertiary to blue — eliminates M3-generated orange/amber tertiary -->
+        <item name="colorTertiary">@color/colorAccentDark</item>
+        <item name="colorTertiaryContainer">#E3F2FD</item>
+        <item name="colorOnTertiaryContainer">@color/colorAccentDark</item>
+        <!-- FAB / secondary container: light blue instead of lavender -->
+        <item name="colorSecondaryContainer">#E3F2FD</item>
+        <item name="colorOnSecondaryContainer">@color/colorAccentDark</item>
     </style>
 
     <!-- Base application theme. -->
     <style name="Theme.Whisper.ActionBar" parent="Theme.Material3.DayNight">
-        <!-- Customize your light theme here. -->
         <item name="android:windowBackground">@color/windowBackground</item>
+        <item name="colorPrimary">@color/colorAccentDark</item>
+        <item name="colorSecondary">@color/colorAccentDark</item>
+        <!-- Neutral surfaces: suppress M3's auto-generated lavender/purple tint -->
+        <item name="colorSurface">#FFFFFF</item>
+        <item name="colorSurfaceVariant">#F0F2F4</item>
+        <item name="android:colorBackground">#FAFAFA</item>
+        <!-- M3 1.2+ container tokens — action bar uses colorSurfaceContainer -->
+        <item name="colorSurfaceContainerLowest">#FFFFFF</item>
+        <item name="colorSurfaceContainerLow">#F8F8F8</item>
+        <item name="colorSurfaceContainer">#F4F4F4</item>
+        <item name="colorSurfaceContainerHigh">#EEEEEE</item>
+        <item name="colorSurfaceContainerHighest">#E8E8E8</item>
+        <!-- Align tertiary to blue — eliminates M3-generated orange/amber tertiary -->
+        <item name="colorTertiary">@color/colorAccentDark</item>
+        <item name="colorTertiaryContainer">#E3F2FD</item>
+        <item name="colorOnTertiaryContainer">@color/colorAccentDark</item>
+        <!-- FAB / secondary container: light blue instead of lavender -->
+        <item name="colorSecondaryContainer">#E3F2FD</item>
+        <item name="colorOnSecondaryContainer">@color/colorAccentDark</item>
     </style>
 
     <style name="Theme.WhisperFloating" parent="Theme.Whisper.NoActionBar">

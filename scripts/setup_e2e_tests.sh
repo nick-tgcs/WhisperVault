@@ -51,7 +51,7 @@ SPEECH_WAV="$ASSETS_DIR/speech_test.wav"
 DEVICE_MODEL_DIR="/data/local/tmp/whisper_model"
 
 # HuggingFace direct-download URL (resolve, not blob)
-ZIP_URL="https://huggingface.co/DocWolle/whisperOnnx/resolve/main/whisper_small_int8.zip"
+ZIP_URL="https://huggingface.co/huggingface0ddg0/whisperOnnx/resolve/main/whisper_small_int8.zip"
 
 # Exact file names that Recognizer.java expects (in any order inside the dir)
 MODEL_FILES=(

@@ -26,7 +26,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodInfo;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.CheckBox;
+import com.google.android.material.materialswitch.MaterialSwitch;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -65,9 +65,9 @@ public class MainActivity extends AppCompatActivity {
     private FloatingActionButton fabCopy;
     private ImageButton btnRecord;
     private LinearLayout layoutTTS;
-    private CheckBox append;
-    private CheckBox translate;
-    private CheckBox modeTTS;
+    private MaterialSwitch append;
+    private MaterialSwitch translate;
+    private MaterialSwitch modeTTS;
     private ProgressBar processingBar;
     private ImageButton btnInfo;
 

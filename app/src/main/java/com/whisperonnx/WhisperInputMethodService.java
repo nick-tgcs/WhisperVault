@@ -17,6 +17,8 @@ import androidx.preference.PreferenceManager;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
+import android.view.ContextThemeWrapper;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.ImageButton;
@@ -111,7 +113,8 @@ public class WhisperInputMethodService extends InputMethodService {
             editor.apply();
         }
 
-        View view = getLayoutInflater().inflate(R.layout.voice_service, null);
+        View view = LayoutInflater.from(new ContextThemeWrapper(this, R.style.Theme_Whisper_ActionBar))
+                .inflate(R.layout.voice_service, null);
         btnRecord = view.findViewById(R.id.btnRecord);
         btnKeyboard = view.findViewById(R.id.btnKeyboard);
         btnTranslate = view.findViewById(R.id.btnTranslate);
