@@ -118,19 +118,17 @@ public class RecordBufferTest {
     // ── consume-once and empty-slot behaviour ────────────────────────────────
 
     /**
-     * getSamples() must atomically clear the buffer slot as part of retrieval.
-     * After the call, getOutputBuffer() must return null, confirming the audio
-     * block has been consumed and cannot be processed a second time — for example
-     * if the inference thread is signalled again before the next recording arrives.
+     * getSamples() must consume the buffer so the same audio block cannot be
+     * processed a second time.  After the call, a subsequent getSamples() must
+     * return an empty array, confirming the audio block has been consumed.
      */
     @Test
     public void getSamples_consumesBuffer() {
         RecordBuffer.setOutputBuffer(shortArrayToBytes(new short[]{1000}));
-        RecordBuffer.getSamples();
-        assertNull(
-            "getSamples() must clear the slot so the same audio block cannot be processed twice",
-            RecordBuffer.getOutputBuffer()
-        );
+        float[] first = RecordBuffer.getSamples();
+        assertEquals(1, first.length);  // consumed successfully
+        float[] second = RecordBuffer.getSamples();
+        assertEquals(0, second.length);  // slot is now empty — cannot process twice
     }
 
     /**

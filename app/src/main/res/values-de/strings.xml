@@ -27,7 +27,10 @@
     <string name="text_to_speech">Sprachausgabe:</string>
     <string name="tts_language_not_supported">Sprachausgabe: Sprache nicht unterstützt</string>
     <string name="tts_initialization_failed">Sprachausgabe: Initialisierung fehlgeschlagen</string>
-    <string name="auto_button">automatischer Modus</string>
+    <string name="auto_button">Automatischer Modus</string>
+    <string name="continuous_button">Fortlaufender Modus</string>
+    <string name="listening">Lauscht…</string>
+    <string name="recording">Aufnahme…</string>
     <string name="error_no_input">Keine Sprache detektiert</string>
     <string name="install_model">Modell installieren</string>
     <string name="auto_lang">Sprache erkennen</string>
@@ -36,7 +39,7 @@
     <string name="settings_ime">Eingabemethode (IME) &amp; Test</string>
     <string name="settings_general">Allgemein</string>
     <string name="whisper_test">Whisper+ Test</string>
-    <string name="settings_minimum_silence">Mindeststille im Automatikmodus (ms)</string>
+    <string name="settings_minimum_silence">Mindeststille vor Stopp (ms)</string>
     <string name="lang1">Sprache 1</string>
     <string name="lang2">Sprache 2</string>
     <string name="setting_bluetooth">Bluetoothgeräte verwenden</string>

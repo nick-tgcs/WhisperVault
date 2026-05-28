@@ -11,7 +11,6 @@ import android.util.Pair;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
-import android.widget.ImageButton;
 import android.widget.Spinner;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import android.widget.Toast;
@@ -35,14 +34,11 @@ public class SettingsActivity extends AppCompatActivity {
 
     private SharedPreferences sp = null;
     private Spinner spinnerLanguage;
-    private Spinner spinnerLanguage1IME;
-    private Spinner spinnerLanguage2IME;
     private MaterialSwitch modeSimpleChinese;
     private MaterialSwitch modeSimpleChineseIME;
     private MaterialSwitch modeBluetooth;
     private String langCodeIME = "";
     private RangeSlider minSilence;
-    private int langSelected;
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -55,101 +51,6 @@ public class SettingsActivity extends AppCompatActivity {
 
         sp = PreferenceManager.getDefaultSharedPreferences(this);
         langCodeIME = sp.getString("language", "auto");
-
-        if (!sp.contains("langSelected")){
-            SharedPreferences.Editor editor = sp.edit();
-            editor.putInt("langSelected",1);
-            editor.putString("language1",langCodeIME);
-            editor.putString("language2","auto");
-            editor.apply();
-        }
-
-        ImageButton btnLang1 = findViewById(R.id.btnLang1);
-        ImageButton btnLang2 = findViewById(R.id.btnLang2);
-
-        langSelected = sp.getInt("langSelected", 1);
-        if (langSelected == 1) {
-            btnLang1.setImageResource(R.drawable.ic_counter_1_on_36dp);
-            btnLang2.setImageResource(R.drawable.ic_counter_2_off_36dp);
-        } else {
-            btnLang1.setImageResource(R.drawable.ic_counter_1_off_36dp);
-            btnLang2.setImageResource(R.drawable.ic_counter_2_on_36dp);
-        }
-
-        btnLang1.setOnClickListener(v -> {
-            String lang = sp.getString("language1", "auto");
-            SharedPreferences.Editor editor = sp.edit();
-            editor.putInt("langSelected", 1);
-            editor.putString("language", lang);
-            editor.apply();
-            langSelected = 1;
-            btnLang1.setImageResource(R.drawable.ic_counter_1_on_36dp);
-            btnLang2.setImageResource(R.drawable.ic_counter_2_off_36dp);
-        });
-
-        btnLang2.setOnClickListener(v -> {
-            String lang = sp.getString("language2", "auto");
-            SharedPreferences.Editor editor = sp.edit();
-            editor.putInt("langSelected", 2);
-            editor.putString("language", lang);
-            editor.apply();
-            langSelected = 2;
-            btnLang1.setImageResource(R.drawable.ic_counter_1_off_36dp);
-            btnLang2.setImageResource(R.drawable.ic_counter_2_on_36dp);
-        });
-
-        spinnerLanguage1IME = findViewById(R.id.spnrLanguage1_ime);
-        spinnerLanguage2IME = findViewById(R.id.spnrLanguage2_ime);
-
-        List<Pair<String, String>> languagePairs = LanguagePairAdapter.getLanguagePairs(this);
-
-        LanguagePairAdapter languagePairAdapter1IME = new LanguagePairAdapter(this, android.R.layout.simple_spinner_item, languagePairs);
-        LanguagePairAdapter languagePairAdapter2IME = new LanguagePairAdapter(this, android.R.layout.simple_spinner_item, languagePairs);
-        languagePairAdapter1IME.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerLanguage1IME.setAdapter(languagePairAdapter1IME);
-        spinnerLanguage2IME.setAdapter(languagePairAdapter2IME);
-        String langCode1IME = sp.getString("language1", "auto");
-        String langCode2IME = sp.getString("language2", "auto");
-
-        spinnerLanguage1IME.setSelection(languagePairAdapter1IME.getIndexByCode(langCode1IME));
-        spinnerLanguage2IME.setSelection(languagePairAdapter2IME.getIndexByCode(langCode2IME));
-
-        spinnerLanguage1IME.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
-                SharedPreferences.Editor editor = sp.edit();
-                editor.putString("language1",languagePairs.get(i).first);
-                if (langSelected == 1) {
-                    langCodeIME = languagePairs.get(i).first;
-                    editor.putString("language",languagePairs.get(i).first);
-                }
-                editor.apply();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> adapterView) {
-
-            }
-        });
-
-        spinnerLanguage2IME.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
-                SharedPreferences.Editor editor = sp.edit();
-                editor.putString("language2",languagePairs.get(i).first);
-                if (langSelected == 2) {
-                    langCodeIME = languagePairs.get(i).first;
-                    editor.putString("language",languagePairs.get(i).first);
-                }
-                editor.apply();
-
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> adapterView) {
-
-            }
-        });
 
         modeSimpleChineseIME = findViewById(R.id.mode_simple_chinese_ime);
         modeSimpleChineseIME.setChecked(sp.getBoolean("simpleChinese",false));  //default to traditional Chinese
@@ -172,6 +73,8 @@ public class SettingsActivity extends AppCompatActivity {
         });
 
         spinnerLanguage = findViewById(R.id.spnrLanguage);
+
+        List<Pair<String, String>> languagePairs = LanguagePairAdapter.getLanguagePairs(this);
 
         LanguagePairAdapter languagePairAdapter = new LanguagePairAdapter(this, android.R.layout.simple_spinner_item, languagePairs);
         languagePairAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
