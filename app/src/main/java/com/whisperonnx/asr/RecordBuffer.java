@@ -3,137 +3,106 @@ package com.whisperonnx.asr;
 import androidx.annotation.VisibleForTesting;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Intermediate buffer that carries recorded PCM audio from the capture thread
- * (Recorder) to the inference thread (Whisper).
+ * Intermediate buffer that carries a single block of recorded PCM audio from the
+ * capture thread (Recorder) to the inference thread (Whisper).
  *
- * <p>All audio — whether from manual, auto, or continuous recording — is enqueued
- * via a thread-safe FIFO queue.  The single-slot {@link AtomicReference} that
- * previously backed this class has been replaced by the queue, which provides
- * the same consume-once semantics for single-utterance recordings while also
- * supporting multiple in-flight utterances in continuous mode.
- *
+ * <p>Design notes:
  * <ul>
- *   <li>{@link #setOutputBuffer(byte[])} — enqueues a single completed recording
- *       (manual/auto mode).  For backward compatibility it also stores the buffer
- *       in {@link #sLastSetBuffer} for tests.</li>
- *   <li>{@link #enqueueUtterance(byte[])} — enqueues an utterance for continuous
- *       mode.</li>
- *   <li>{@link #dequeueSamples()} — dequeues the next utterance and converts it
- *       to peak-normalised floating-point samples.</li>
- *   <li>{@link #hasUtterances()} — returns true if the queue is non-empty.</li>
+ *   <li>This is a single-slot channel: if a new recording completes before the
+ *       previous one has been consumed, the previous block is silently replaced.
+ *       In normal use there is exactly one producer (Recorder) and one consumer
+ *       (Whisper), so no data is lost.</li>
+ *   <li>The slot is backed by an {@link AtomicReference} so that
+ *       {@link #getSamples()} can atomically retrieve and erase the buffer in a
+ *       single operation.  This eliminates two hazards that exist with a plain
+ *       field: (a) the same audio block being processed twice if the inference
+ *       thread is signalled again before a new recording arrives, and (b) a
+ *       time-of-check / time-of-use race where the buffer reference could be
+ *       replaced between the length read and the data read inside
+ *       {@code getSamples()}.</li>
  * </ul>
  */
 public class RecordBuffer {
 
     /**
-     * FIFO queue of PCM byte arrays.  Each entry is one utterance handed off by
-     * the Recorder.  In manual/auto mode the queue contains at most one entry;
-     * in continuous mode it may contain several.
+     * The raw PCM bytes of the most recently completed recording, or {@code null}
+     * when no unprocessed audio is waiting.
      */
-    private static final ConcurrentLinkedQueue<byte[]> utteranceQueue = new ConcurrentLinkedQueue<>();
+    private static final AtomicReference<byte[]> outputBuffer = new AtomicReference<>();
 
     /**
-     * Persists the last value passed to {@link #setOutputBuffer}.  Unlike the
-     * queue, this reference is never erased by {@link #dequeueSamples()}.
-     * Intended for instrumented tests that need to verify the bytes stored even
-     * after the inference pipeline has already consumed them.
+     * Persists the last value passed to {@link #setOutputBuffer}. Unlike the main
+     * {@code outputBuffer} slot, this reference is never erased by {@link #getSamples}.
+     * Intended for instrumented tests that need to verify the bytes stored even after
+     * the inference pipeline has already consumed them via {@link #getSamples}.
      */
     @VisibleForTesting
     public static volatile byte[] sLastSetBuffer = null;
 
-    // ── Enqueue API ──────────────────────────────────────────────────────────
-
     /**
-     * Enqueues a completed block of raw PCM audio (manual/auto mode).
-     * Also stores the buffer in {@link #sLastSetBuffer} for test verification.
-     * Passing {@code null} clears the queue (used for test teardown).
+     * Stores a completed block of raw PCM audio so it can be retrieved by
+     * {@link #getSamples()}.  Replaces any unprocessed buffer that was already
+     * waiting.
      *
      * @param buffer s16le (signed 16-bit, native byte order) PCM bytes at 16 kHz
-     *               mono, or {@code null} to clear the queue.
+     *               mono, or {@code null} to mark the slot as empty.
      */
     public static void setOutputBuffer(byte[] buffer) {
-        if (buffer == null) {
-            utteranceQueue.clear();
-            sLastSetBuffer = null;
-            return;
-        }
         sLastSetBuffer = buffer;
-        utteranceQueue.offer(buffer);
+        outputBuffer.set(buffer);
     }
 
     /**
-     * Enqueues a completed utterance for continuous mode.
+     * Returns the raw PCM bytes currently waiting to be processed, or {@code null}
+     * if the slot is empty.
      *
-     * @param utterance s16le PCM bytes at 16 kHz mono representing one utterance.
+     * <p>This is a non-destructive peek: the buffer is not removed from the slot.
+     * Callers that intend to process the audio should use {@link #getSamples()},
+     * which atomically retrieves and erases the buffer so it cannot be processed
+     * a second time.
      */
-    public static void enqueueUtterance(byte[] utterance) {
-        sLastSetBuffer = utterance;
-        utteranceQueue.offer(utterance);
-    }
-
-    // ── Dequeue API ──────────────────────────────────────────────────────────
-
-    /**
-     * Returns {@code true} if there are utterances waiting in the queue.
-     */
-    public static boolean hasUtterances() {
-        return !utteranceQueue.isEmpty();
+    public static byte[] getOutputBuffer() {
+        return outputBuffer.get();
     }
 
     /**
-     * Dequeues the next utterance from the queue and converts it to
+     * Atomically retrieves and erases the stored PCM buffer, then converts it to
      * peak-normalised floating-point samples in the range [−1, 1].
      *
-     * <p>This is a consume-once operation: once an utterance is dequeued it
-     * cannot be retrieved again from the queue.
+     * <p>The retrieve-and-erase is performed as a single {@code getAndSet(null)}
+     * call on the underlying {@link AtomicReference}.  This provides two
+     * guarantees:
+     * <ul>
+     *   <li><b>Consume-once</b>: once this method returns, the slot is empty.  A
+     *       subsequent call will return an empty array rather than re-processing
+     *       the same audio.</li>
+     *   <li><b>No TOCTOU race</b>: the buffer reference is captured once and used
+     *       throughout; it cannot be replaced by another thread between the length
+     *       check and the data read.</li>
+     * </ul>
+     *
+     * <p>Audio format: two bytes per sample, signed 16-bit, byte order follows the
+     * platform native order (little-endian on all current Android devices).
      *
      * @return peak-normalised {@code float[]} ready for the ONNX inference
-     *         pipeline, or an empty array if no utterance was waiting.
+     *         pipeline, or an empty array if no recording was waiting.
      */
-    public static float[] dequeueSamples() {
-        byte[] buf = utteranceQueue.poll();
+    public static float[] getSamples() {
+        // Atomically take the buffer out of the slot and leave it empty, so that
+        // no other caller can process the same recording.
+        byte[] buf = outputBuffer.getAndSet(null);
         if (buf == null) {
             return new float[0];
         }
-        return convertToSamples(buf);
-    }
 
-    // ── Legacy compatibility ────────────────────────────────────────────────
-
-    /**
-     * Returns the raw PCM bytes of the most recently enqueued buffer, or
-     * {@code null} if none.  This is a non-destructive peek for test use only.
-     * Production code should use {@link #dequeueSamples()}.
-     */
-    public static byte[] getOutputBuffer() {
-        return sLastSetBuffer;
-    }
-
-    /**
-     * Atomically retrieves and converts the next utterance from the queue.
-     * Equivalent to {@link #dequeueSamples()}; kept for backward compatibility.
-     *
-     * @return peak-normalised {@code float[]} ready for the ONNX inference
-     *         pipeline, or an empty array if no utterance was waiting.
-     */
-    public static float[] getSamples() {
-        return dequeueSamples();
-    }
-
-    // ── Shared conversion ────────────────────────────────────────────────────
-
-    /**
-     * Converts raw s16le PCM bytes to peak-normalised floating-point samples
-     * in the range [−1, 1].
-     */
-    private static float[] convertToSamples(byte[] buf) {
         int numSamples = buf.length / 2;
         ByteBuffer byteBuffer = ByteBuffer.wrap(buf);
         byteBuffer.order(ByteOrder.nativeOrder());
 
+        // Convert audio data to PCM_FLOAT format
         float[] samples = new float[numSamples];
         float maxAbsValue = 0.0f;
 

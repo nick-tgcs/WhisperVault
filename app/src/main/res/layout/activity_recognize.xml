@@ -49,28 +49,7 @@
             android:padding="4dp"
             android:contentDescription="@string/auto_button" />
 
-        <ImageButton
-            android:id="@+id/btnContinuous"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_continuous_off_36dp"
-            android:padding="4dp"
-            android:contentDescription="@string/continuous_button"
-            android:visibility="visible" />
-
     </LinearLayout>
-
-    <!-- Status text — fixed height prevents layout jumps -->
-    <TextView
-        android:id="@+id/tv_status"
-        android:layout_width="match_parent"
-        android:layout_height="24dp"
-        android:gravity="center"
-        android:paddingHorizontal="16dp"
-        android:textAppearance="?attr/textAppearanceLabelSmall"
-        android:textColor="#FFB3C6FF"
-        android:visibility="invisible" />
 
     <!-- Record button centred -->
     <LinearLayout

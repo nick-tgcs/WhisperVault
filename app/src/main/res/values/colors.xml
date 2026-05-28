@@ -9,9 +9,4 @@
     <!-- IME panel dark surface -->
     <color name="ime_surface">#1C1B1F</color>
     <color name="ime_strip_surface">#2A2930</color>
-
-    <!-- Mic button state colors -->
-    <color name="colorRecording">#FFCF6679</color>   <!-- red: speech detected -->
-    <color name="colorListening">#FFB74D</color>     <!-- amber: mic open, no speech yet -->
-    <color name="colorProcessing">#FF64B5F6</color>  <!-- light blue: transcribing, mic closed -->
 </resources>

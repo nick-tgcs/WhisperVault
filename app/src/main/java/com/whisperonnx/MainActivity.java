@@ -243,10 +243,6 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
 
-            @Override
-            public void onUtteranceReady() {
-                // No-op: MainActivity does not use continuous mode
-            }
         });
         if (GithubStar.shouldShowStarDialog(this)) GithubStar.starDialog(this, "https://github.com/nick-tgcs/WhisperVault");
         // Assume this Activity is the current activity, check record permission
@@ -398,7 +394,6 @@ public class MainActivity extends AppCompatActivity {
     // Recording calls
     private void startRecording() {
         checkPermissions();
-        mRecorder.initVad(Recorder.VadMode.FILTER_SILENCE);
         mRecorder.start();
     }
 

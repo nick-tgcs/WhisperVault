@@ -38,15 +38,24 @@
             android:contentDescription="@string/auto_button" />
 
         <ImageButton
-            android:id="@+id/btnContinuous"
+            android:id="@+id/btnLang1"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_continuous_off_36dp"
+            android:src="@drawable/ic_counter_1_off_36dp"
             android:padding="10dp"
-            android:contentDescription="@string/continuous_button"
-            android:visibility="visible" />
+            android:contentDescription="@string/lang1" />
+
+        <ImageButton
+            android:id="@+id/btnLang2"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_counter_2_off_36dp"
+            android:padding="10dp"
+            android:contentDescription="@string/lang2" />
 
         <View
             android:layout_width="1dp"
@@ -84,16 +93,17 @@
 
     </LinearLayout>
 
-    <!-- Status label — fixed height prevents layout jumps -->
+    <!-- Error / status label — shown only when there is a message -->
     <TextView
         android:id="@+id/tv_status"
+        android:visibility="gone"
         android:layout_width="match_parent"
-        android:layout_height="24dp"
+        android:layout_height="wrap_content"
         android:gravity="center"
         android:paddingHorizontal="16dp"
+        android:paddingTop="6dp"
         android:textAppearance="?attr/textAppearanceLabelSmall"
-        android:textColor="#FFB3C6FF"
-        android:visibility="invisible" />
+        android:textColor="#FFB3C6FF" />
 
     <!-- Record / Delete / Enter -->
     <RelativeLayout

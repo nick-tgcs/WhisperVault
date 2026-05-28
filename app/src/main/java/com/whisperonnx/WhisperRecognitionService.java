@@ -58,35 +58,27 @@ public class WhisperRecognitionService extends RecognitionService {
         initModel(callback, langCode);
 
         mRecorder = new Recorder(this);
-        mRecorder.setListener(new Recorder.RecorderListener() {
-            @Override
-            public void onUpdateReceived(String message) {
-                if (message.equals(Recorder.MSG_RECORDING)){
-                    try {
-                        callback.rmsChanged(10);
-                    } catch (RemoteException e) {
-                        throw new RuntimeException(e);
-                    }
-                } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
-                    HapticFeedback.vibrate(WhisperRecognitionService.this);
-                    try {
-                        callback.rmsChanged(-20.0f);
-                    } catch (RemoteException e) {
-                        throw new RuntimeException(e);
-                    }
-                    startTranscription();
-                } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
-                    try {
-                        callback.error(ERROR_CLIENT);
-                    } catch (RemoteException e) {
-                        throw new RuntimeException(e);
-                    }
+        mRecorder.setListener(message -> {
+            if (message.equals(Recorder.MSG_RECORDING)){
+                try {
+                    callback.rmsChanged(10);
+                } catch (RemoteException e) {
+                    throw new RuntimeException(e);
                 }
-            }
-
-            @Override
-            public void onUtteranceReady() {
-                // No-op: WhisperRecognitionService does not use continuous mode
+            } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
+                HapticFeedback.vibrate(this);
+                try {
+                    callback.rmsChanged(-20.0f);
+                } catch (RemoteException e) {
+                    throw new RuntimeException(e);
+                }
+                startTranscription();
+            } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
+                try {
+                    callback.error(ERROR_CLIENT);
+                } catch (RemoteException e) {
+                    throw new RuntimeException(e);
+                }
             }
         });
 
@@ -176,7 +168,7 @@ public class WhisperRecognitionService extends RecognitionService {
     }
 
     private void startRecording() {
-        mRecorder.initVad(Recorder.VadMode.STOP_ON_SILENCE);
+        mRecorder.initVad();
         mRecorder.start();
         recognitionCancelled = false;
     }
