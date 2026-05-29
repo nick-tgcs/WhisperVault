@@ -262,11 +262,8 @@ public class ContinuousModeIntegrationTest {
                             recorder.initVad(Recorder.VadMode.CONTINUOUS);
                             recorder.start();
                         }
-                        // Guard must have prevented a no-op start — isInProgress is still
-                        // consistent (either true if running or false if not started yet).
-                        // The key assertion: no exception was thrown.
-                        assertTrue("isInProgress() must return a consistent boolean",
-                                recorder.isInProgress() || !recorder.isInProgress());
+                        // The key assertion: no exception was thrown while executing
+                        // the guarded block. The done.await() below enforces the timeout.
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     } finally {
@@ -283,7 +280,7 @@ public class ContinuousModeIntegrationTest {
     // ── helpers ───────────────────────────────────────────────────────────────
 
     /**
-     * Generates {@code durationMs} ms of a sine tone at 16 kHz mono s16le.
+     * Generates 200 ms of a sine tone at 16 kHz mono s16le.
      *
      * @param amplitude amplitude in the range (0, 1]
      */
