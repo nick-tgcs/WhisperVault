@@ -26,6 +26,7 @@ import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
 import com.github.houbb.opencc4j.util.ZhConverterUtil;
+import com.whisperonnx.asr.RecordBuffer;
 import com.whisperonnx.asr.Recorder;
 import com.whisperonnx.asr.Whisper;
 import com.whisperonnx.asr.WhisperResult;
@@ -54,6 +55,8 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     private Context mContext;
     private CountDownTimer countDownTimer;
     private RecordingMode currentMode = RecordingMode.MANUAL;
+    /** Accumulated transcript for continuous mode; sent as the activity result on finish. */
+    private final StringBuilder continuousTranscript = new StringBuilder();
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -190,7 +193,10 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
             editor.apply();
             updateModeButtons();
             if (mWhisper != null) stopTranscription();
-            setResult(RESULT_CANCELED, null);
+            // If we have accumulated a continuous transcript, return it; otherwise cancel.
+            if (continuousTranscript.length() == 0) {
+                setResult(RESULT_CANCELED, null);
+            }
             finish();
         });
 
@@ -208,7 +214,10 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
             editor.apply();
             updateModeButtons();
             if (mWhisper != null) stopTranscription();
-            setResult(RESULT_CANCELED, null);
+            // If we have accumulated a continuous transcript, return it; otherwise cancel.
+            if (continuousTranscript.length() == 0) {
+                setResult(RESULT_CANCELED, null);
+            }
             finish();
         });
 
@@ -314,16 +323,20 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
                 }
                 if (result.trim().length() > 0){
                     if (currentMode == RecordingMode.CONTINUOUS) {
-                        // In continuous mode, send result but keep listening
+                        // In continuous mode, accumulate result and keep listening
                         sendResultAndContinue(result.trim());
                     } else {
                         sendResult(result.trim());
                     }
                 } else {
-                    // Empty result in continuous mode — restart recording
+                    // Empty result in continuous mode — recorder still running, just update UI
                     if (currentMode == RecordingMode.CONTINUOUS) {
                         restartRecording();
                     }
+                }
+                // Drain any utterances that arrived in the queue while we were transcribing.
+                if (currentMode == RecordingMode.CONTINUOUS && RecordBuffer.hasUtterances()) {
+                    startTranscription();
                 }
             }
         });
@@ -365,18 +378,30 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         finish();
     }
 
-    /** In continuous mode: send partial result via activity result, then keep listening. */
+    /** In continuous mode: accumulate result and keep listening. */
     private void sendResultAndContinue(String result) {
-        // For RecognizeActivity, we can only send one result back via setResult.
-        // In continuous mode, we accumulate and send the latest result each time,
-        // but the activity stays open for more dictation.
-        // The caller gets the result when the user finally cancels or the activity finishes.
-        // For now, just restart recording — the accumulated text will be sent on finish.
-        // TODO: Consider appending to a running transcript displayed in the UI.
-        restartRecording();
+        continuousTranscript.append(result).append(" ");
+        // Keep the activity result up-to-date so the caller receives the full transcript
+        // when this activity finishes (e.g. user taps ∞ or back to stop dictating).
+        Intent pendingResult = new Intent();
+        ArrayList<String> results = new ArrayList<>();
+        results.add(continuousTranscript.toString().trim());
+        pendingResult.putStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS, results);
+        pendingResult.putExtra(RecognizerIntent.EXTRA_CONFIDENCE_SCORES, new float[]{1.0f});
+        setResult(RESULT_OK, pendingResult);
+        // Recorder is still running in continuous mode — do not reinitialise or restart it.
+        runOnUiThread(() -> {
+            btnRecord.setBackgroundResource(R.drawable.rounded_button_background_recording);
+            tvStatus.setText(R.string.listening);
+            tvStatus.setVisibility(View.VISIBLE);
+        });
     }
 
-    /** Restart recording after transcription in continuous mode. */
+    /**
+     * Updates the UI to the listening state and resets the countdown timer.
+     * Only reinitialises VAD and calls start() if the recorder has actually stopped;
+     * calling initVad() on an active recorder leaks the old VAD instance.
+     */
     private void restartRecording() {
         runOnUiThread(() -> {
             btnRecord.setBackgroundResource(R.drawable.rounded_button_background_listening);
@@ -384,7 +409,7 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
             tvStatus.setVisibility(View.VISIBLE);
             processingBar.setProgress(100);
         });
-        if (mRecorder != null) {
+        if (mRecorder != null && !mRecorder.isInProgress()) {
             mRecorder.initVad(Recorder.VadMode.CONTINUOUS);
             mRecorder.start();
         }

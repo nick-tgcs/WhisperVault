@@ -1,15 +1,14 @@
 name: Auto Version & Tag
 
-# Runs after every merge to master.
-# Computes the next yyyy.MM.count tag and pushes it, which in turn
-# triggers the Build & Release workflow to produce a signed APK.
+# Manual fallback for creating a yyyy.MM.count tag.
+# Automatic tag creation on master is owned by release.yml to avoid
+# duplicate or racing tag pushes when both workflows are active.
 #
 # Tag format:  v2026.05.1, v2026.05.2, v2026.06.1, …
 # versionCode: injected by release.yml from total tag count + base
 
 on:
-  push:
-    branches: [ master ]
+  workflow_dispatch:
 
 permissions:
   contents: write
