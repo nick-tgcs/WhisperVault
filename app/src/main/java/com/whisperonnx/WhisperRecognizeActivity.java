@@ -193,7 +193,10 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
             editor.apply();
             updateModeButtons();
             if (mWhisper != null) stopTranscription();
-            // If we have accumulated a continuous transcript, return it; otherwise cancel.
+            // Switching modes mid-session commits any accumulated continuous transcript.
+            // Intentional: the user was actively dictating; switching away is "done, keep text".
+            // If nothing was spoken yet, cancel instead (no partial result to commit).
+            // Note: the dedicated Cancel button always returns RESULT_CANCELED unconditionally.
             if (continuousTranscript.length() == 0) {
                 setResult(RESULT_CANCELED, null);
             }
@@ -214,7 +217,10 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
             editor.apply();
             updateModeButtons();
             if (mWhisper != null) stopTranscription();
-            // If we have accumulated a continuous transcript, return it; otherwise cancel.
+            // Switching modes mid-session commits any accumulated continuous transcript.
+            // Intentional: the user was actively dictating; switching away is "done, keep text".
+            // If nothing was spoken yet, cancel instead (no partial result to commit).
+            // Note: the dedicated Cancel button always returns RESULT_CANCELED unconditionally.
             if (continuousTranscript.length() == 0) {
                 setResult(RESULT_CANCELED, null);
             }
