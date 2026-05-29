@@ -28,6 +28,7 @@ import android.widget.TextView;
 import androidx.core.content.ContextCompat;
 
 import com.github.houbb.opencc4j.util.ZhConverterUtil;
+import com.whisperonnx.asr.RecordBuffer;
 import com.whisperonnx.asr.Recorder;
 import com.whisperonnx.asr.Whisper;
 import com.whisperonnx.asr.WhisperResult;
@@ -490,11 +491,16 @@ public class WhisperInputMethodService extends InputMethodService {
                 if (currentMode == RecordingMode.CONTINUOUS) {
                     // Continuous mode: don't stop — the next utterance is already being recorded.
                     // Button stays red (mic is still open).
+                    // Drain any utterances that arrived in the queue while we were transcribing
+                    // this one.  Whisper.start() silently no-ops when in-progress, so queued
+                    // utterances would otherwise be lost; checking here ensures every enqueued
+                    // utterance triggers a transcription pass.
+                    if (RecordBuffer.hasUtterances()) {
+                        startTranscription();
+                    }
                     handler.post(() -> {
                         processingBar.setProgress(0);
                         processingBar.setIndeterminate(false);
-                        // Status will change to "Listening…" when Recorder sends MSG_LISTENING
-                        // for the next utterance. Keep showing "Processing…" for now.
                     });
                 } else if (currentMode == RecordingMode.AUTO) {
                     // Auto one-shot: we're done. Reset to manual mode.
