@@ -176,6 +176,10 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
 
         btnModeAuto.setOnClickListener(v -> {
             // A button cycles: MANUAL → AUTO → CONTINUOUS → MANUAL
+            // WhisperRecognizeActivity is a one-shot RecognizerIntent overlay; it always
+            // finishes after a single recording session.  These mode buttons persist the
+            // preference for the *next* launch — they do not switch modes mid-session.
+            // In-session mode cycling is handled by WhisperInputMethodService (the IME).
             switch (currentMode) {
                 case MANUAL:
                     currentMode = RecordingMode.AUTO;

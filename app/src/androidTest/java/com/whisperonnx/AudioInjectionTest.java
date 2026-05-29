@@ -123,9 +123,10 @@ public class AudioInjectionTest {
         SystemClock.sleep(300);
 
         // --- Assert ---
-        // Use sLastSetBuffer (not getOutputBuffer()) because Whisper's processing
-        // thread may have already consumed the live slot via getSamples() within
-        // the 300 ms window, which clears getOutputBuffer() to null.
+        // Use sLastSetBuffer directly: getOutputBuffer() is a non-destructive peek of
+        // sLastSetBuffer, but sLastSetBuffer is never cleared by getSamples() — both
+        // return the same value here.  Accessing the field directly is the clearest signal
+        // that we're asserting on the raw injected bytes, not a queue element.
         byte[] captured = RecordBuffer.sLastSetBuffer;
         assertNotNull("RecordBuffer should not be null after injected recording", captured);
         assertArrayEquals("RecordBuffer must contain the exact injected PCM bytes", testPcm, captured);

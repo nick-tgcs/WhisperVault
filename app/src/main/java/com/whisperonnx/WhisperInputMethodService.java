@@ -138,9 +138,13 @@ public class WhisperInputMethodService extends InputMethodService {
             @Override
             public void onUpdateReceived(String message) {
                 if (message.equals(Recorder.MSG_LISTENING)) {
-                    // Mic is open, waiting for speech
+                    // Mic is open, waiting for speech.
+                    // In continuous mode the mic stays RED between utterances; only the
+                    // status text changes to "listening". Amber is for non-continuous modes.
                     handler.post(() -> {
-                        btnRecord.setBackgroundResource(R.drawable.rounded_button_background_listening);
+                        if (currentMode != RecordingMode.CONTINUOUS) {
+                            btnRecord.setBackgroundResource(R.drawable.rounded_button_background_listening);
+                        }
                         tvStatus.setText(R.string.listening);
                         tvStatus.setVisibility(View.VISIBLE);
                     });

@@ -56,8 +56,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_continuous_off_36dp"
             android:padding="4dp"
-            android:contentDescription="@string/continuous_button"
-            android:visibility="visible" />
+            android:contentDescription="@string/continuous_button" />
 
     </LinearLayout>
 
