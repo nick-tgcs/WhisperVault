@@ -42,6 +42,36 @@ public class Recorder {
 
     public interface RecorderListener {
         void onUpdateReceived(String message);
+        /**
+         * Called in {@link VadMode#CONTINUOUS} mode when a pause is detected after
+         * speech. The current utterance has been enqueued via
+         * {@link RecordBuffer#enqueueUtterance(byte[])} and the mic remains open
+         * for the next utterance.
+         */
+        void onUtteranceReady();
+    }
+
+    /**
+     * Determines how VAD is used during recording.
+     * <ul>
+     *   <li>{@link #OFF} – VAD is not used; all audio is written to the buffer.</li>
+     *   <li>{@link #FILTER_SILENCE} – VAD filters out silence so that pauses
+     *       do not consume the 30-second buffer. Recording continues until the
+     *       user manually stops or the buffer fills with speech.</li>
+     *   <li>{@link #STOP_ON_SILENCE} – VAD stops recording automatically after
+     *       the configured silence duration (auto mode).</li>
+     *   <li>{@link #CONTINUOUS} – VAD filters out silence and hands off each
+     *       utterance on pause, but keeps the mic open. The recording loop
+     *       continues until explicitly stopped. Each utterance is enqueued via
+     *       {@link RecordBuffer#enqueueUtterance(byte[])} and the listener is
+     *       notified via {@link RecorderListener#onUtteranceReady()}.</li>
+     * </ul>
+     */
+    public enum VadMode {
+        OFF,
+        FILTER_SILENCE,
+        STOP_ON_SILENCE,
+        CONTINUOUS
     }
 
     private static final String TAG = "Recorder";
@@ -50,6 +80,7 @@ public class Recorder {
     public static final String MSG_RECORDING = "Recording...";
     public static final String MSG_RECORDING_DONE = "Recording done...!";
     public static final String MSG_RECORDING_ERROR = "Recording error...";
+    public static final String MSG_LISTENING = "Listening...";
 
     private final Context mContext;
     private final AtomicBoolean mInProgress = new AtomicBoolean(false);
@@ -60,7 +91,7 @@ public class Recorder {
     private final Object fileSavedLock = new Object(); // Lock object for wait/notify
 
     private volatile boolean shouldStartRecording = false;
-    private boolean useVAD = false;
+    private VadMode vadMode = VadMode.OFF;
     private VadWebRTC vad = null;
     private static final int VAD_FRAME_SIZE = 480;
     private SharedPreferences sp;
@@ -95,7 +126,23 @@ public class Recorder {
         }
     }
 
-    public void initVad(){
+    /**
+     * Initialises VAD in {@link VadMode#STOP_ON_SILENCE} mode (auto mode).
+     * Equivalent to {@code initVad(VadMode.STOP_ON_SILENCE)}.
+     */
+    public void initVad() {
+        initVad(VadMode.STOP_ON_SILENCE);
+    }
+
+    /**
+     * Initialises VAD with the given mode.
+     *
+     * @param mode {@link VadMode#FILTER_SILENCE} to skip silence without stopping,
+     *             {@link VadMode#STOP_ON_SILENCE} to stop recording on silence,
+     *             or {@link VadMode#CONTINUOUS} to hand off utterances on silence
+     *             and keep the mic open.
+     */
+    public void initVad(VadMode mode) {
         int silenceDurationMs = sp.getInt("silenceDurationMs", 800);
         vad = Vad.builder()
                 .setSampleRate(SampleRate.SAMPLE_RATE_16K)
@@ -104,8 +151,8 @@ public class Recorder {
                 .setSilenceDurationMs(silenceDurationMs)
                 .setSpeechDurationMs(200)
                 .build();
-        useVAD = true;
-        Log.d(TAG, "VAD initialized");
+        vadMode = mode;
+        Log.d(TAG, "VAD initialized in mode: " + mode);
     }
 
 
@@ -227,50 +274,79 @@ public class Recorder {
 
         byte[] audioData = new byte[bufferSize];
         int totalBytesRead = 0;
+        int speechBytesWritten = 0;  // Only counts speech bytes (used for 30s limit when VAD filters silence)
 
         boolean isSpeech;
         boolean isRecording = false;
         byte[] vadAudioBuffer = new byte[VAD_FRAME_SIZE * 2];  //VAD needs 16 bit
 
-        while (mInProgress.get() && totalBytesRead < bytesForThirtySeconds) {
+        while (mInProgress.get()) {
+            // In FILTER_SILENCE/CONTINUOUS modes, the 30s limit applies to speech bytes only.
+            // In other modes, it applies to total bytes read.
+            int bytesLimit = (vadMode == VadMode.FILTER_SILENCE || vadMode == VadMode.CONTINUOUS) ? speechBytesWritten : totalBytesRead;
+            if (bytesLimit >= bytesForThirtySeconds) break;
+
             int bytesRead = audioRecord.read(audioData, 0, VAD_FRAME_SIZE * 2);
             if (bytesRead > 0) {
-                outputBuffer.write(audioData, 0, bytesRead);  // Save all bytes read up to 30 seconds
                 totalBytesRead += bytesRead;
             } else {
                 Log.d(TAG, "AudioRecord error, bytes read: " + bytesRead);
                 break;
             }
 
-            if (useVAD){
-                byte[] outputBufferByteArray = outputBuffer.toByteArray();
-                if (outputBufferByteArray.length >= VAD_FRAME_SIZE * 2) {
-                    // Always use the last VAD_FRAME_SIZE * 2 bytes (16 bit) from outputBuffer for VAD
-                    System.arraycopy(outputBufferByteArray, outputBufferByteArray.length - VAD_FRAME_SIZE * 2, vadAudioBuffer, 0, VAD_FRAME_SIZE * 2);
+            if (vadMode != VadMode.OFF) {
+                // Use the most recently read frame for VAD detection
+                int copyLen = Math.min(bytesRead, VAD_FRAME_SIZE * 2);
+                System.arraycopy(audioData, 0, vadAudioBuffer, 0, copyLen);
+                // Zero-pad the tail so VAD never evaluates stale bytes from a previous frame.
+                if (copyLen < VAD_FRAME_SIZE * 2) {
+                    java.util.Arrays.fill(vadAudioBuffer, copyLen, VAD_FRAME_SIZE * 2, (byte) 0);
+                }
 
-                    isSpeech = vad.isSpeech(vadAudioBuffer);
-                    if (isSpeech) {
-                        if (!isRecording) {
-                            Log.d(TAG, "VAD Speech detected: recording starts");
-                            sendUpdate(MSG_RECORDING);
-                        }
-                        isRecording = true;
-                    } else {
-                        if (isRecording) {
-                            isRecording = false;
+                isSpeech = vad.isSpeech(vadAudioBuffer);
+                if (isSpeech) {
+                    if (!isRecording) {
+                        Log.d(TAG, "VAD Speech detected: recording starts");
+                        sendUpdate(MSG_RECORDING);
+                    }
+                    isRecording = true;
+                    outputBuffer.write(audioData, 0, bytesRead);  // Only write speech to buffer
+                    speechBytesWritten += bytesRead;
+                } else {
+                    if (isRecording) {
+                        isRecording = false;
+                        if (vadMode == VadMode.STOP_ON_SILENCE) {
                             mInProgress.set(false);
+                        } else if (vadMode == VadMode.CONTINUOUS) {
+                            // Hand off the current utterance and reset for the next one
+                            byte[] utteranceBytes = outputBuffer.toByteArray();
+                            if (utteranceBytes.length > 6400) {  // min 0.2s
+                                RecordBuffer.enqueueUtterance(utteranceBytes);
+                                if (mListener != null) mListener.onUtteranceReady();
+                            } else if (utteranceBytes.length > 0) {
+                                Log.d(TAG, "Utterance too short (" + utteranceBytes.length + " bytes), discarding");
+                            }
+                            outputBuffer.reset();
+                            speechBytesWritten = 0;
+                            sendUpdate(MSG_LISTENING);
                         }
                     }
+                    // In FILTER_SILENCE mode, silence frames are simply not written
+                    // to the buffer, so they don't consume the 30-second limit.
                 }
             } else {
+                outputBuffer.write(audioData, 0, bytesRead);  // Save all bytes read up to 30 seconds
                 if (!isRecording) sendUpdate(MSG_RECORDING);
                 isRecording = true;
             }
         }
-        Log.d(TAG, "Total bytes recorded: " + totalBytesRead);
+        Log.d(TAG, "Total bytes read: " + totalBytesRead + ", speech bytes written: " + speechBytesWritten);
 
-        if (useVAD){
-            useVAD = false;
+        // Capture the mode before resetting it, so we can use it for the hand-off logic below.
+        VadMode modeAtEnd = vadMode;
+
+        if (vadMode != VadMode.OFF) {
+            vadMode = VadMode.OFF;
             vad.close();
             vad = null;
             Log.d(TAG, "Closing VAD");
@@ -280,12 +356,26 @@ public class Recorder {
         audioManager.stopBluetoothSco();
         audioManager.setBluetoothScoOn(false);
 
-        // Save recorded audio data to BufferStore (up to 30 seconds)
-        RecordBuffer.setOutputBuffer(outputBuffer.toByteArray());
-        if (totalBytesRead > 6400){  //min 0.2s
+        // Save recorded audio data to RecordBuffer
+        byte[] outputBytes = outputBuffer.toByteArray();
+
+        if (modeAtEnd == VadMode.CONTINUOUS) {
+            // CONTINUOUS mode: utterances were handed off via enqueueUtterance during the loop.
+            // If there's a partial utterance remaining (loop was stopped mid-speech), hand it off.
+            if (outputBytes.length > 6400) {
+                RecordBuffer.enqueueUtterance(outputBytes);
+                if (mListener != null) mListener.onUtteranceReady();
+            }
+            // Signal that recording is fully done (loop exited)
             sendUpdate(MSG_RECORDING_DONE);
         } else {
-            sendUpdate(MSG_RECORDING_ERROR);
+            // FILTER_SILENCE / STOP_ON_SILENCE / OFF: single-buffer mode
+            RecordBuffer.setOutputBuffer(outputBytes);
+            if (outputBytes.length > 6400){  //min 0.2s
+                sendUpdate(MSG_RECORDING_DONE);
+            } else {
+                sendUpdate(MSG_RECORDING_ERROR);
+            }
         }
 
         // Notify the waiting thread that recording is complete

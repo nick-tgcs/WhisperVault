@@ -1,0 +1,16 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960">
+
+  <!-- Infinity symbol (filled, accent) for continuous mode ON -->
+  <path
+      android:pathData="M480,880q-83,0 -156,-31.5T197,763q-54,-54 -85.5,-127T80,480q0,-83 31.5,-156T197,197q54,-54 127,-85.5T480,80q83,0 156,31.5T763,197q54,54 85.5,127T880,480q0,83 -31.5,156T763,763q-54,54 -127,85.5T480,880Z"
+      android:fillColor="@color/colorAccent"
+      android:strokeColor="#FFFFFF" android:strokeLineJoin="round" android:strokeWidth="60"/>
+  <path
+      android:pathData="M340,480q0,-50 35.5,-85t85.5,-35q30,0 57,14t43,38q16,-24 43,-38t57,-14q50,0 85.5,35t35.5,85q0,50 -35.5,85t-85.5,35q-30,0 -57,-14t-43,-38q-16,24 -43,38t-57,14q-50,0 -85.5,-35t-35.5,-85Z"
+      android:fillColor="@android:color/transparent"
+      android:strokeColor="#FFFFFF" android:strokeWidth="30"/>
+</vector>
