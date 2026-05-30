@@ -296,7 +296,12 @@ public class Recorder {
 
             if (vadMode != VadMode.OFF) {
                 // Use the most recently read frame for VAD detection
-                System.arraycopy(audioData, 0, vadAudioBuffer, 0, Math.min(bytesRead, VAD_FRAME_SIZE * 2));
+                int copyLen = Math.min(bytesRead, VAD_FRAME_SIZE * 2);
+                System.arraycopy(audioData, 0, vadAudioBuffer, 0, copyLen);
+                // Zero-pad the tail so VAD never evaluates stale bytes from a previous frame.
+                if (copyLen < VAD_FRAME_SIZE * 2) {
+                    java.util.Arrays.fill(vadAudioBuffer, copyLen, VAD_FRAME_SIZE * 2, (byte) 0);
+                }
 
                 isSpeech = vad.isSpeech(vadAudioBuffer);
                 if (isSpeech) {
