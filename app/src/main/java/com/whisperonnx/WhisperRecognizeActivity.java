@@ -51,6 +51,7 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     private ProgressBar processingBar = null;
     private Recorder mRecorder = null;
     private Whisper mWhisper = null;
+    private AlertDialog integrityMismatchDialog = null;
     private SharedPreferences sp = null;
     private Context mContext;
     private CountDownTimer countDownTimer;
@@ -356,11 +357,12 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
                 String modelName = ModelIntegrityChecker.getSelectedModel(WhisperRecognizeActivity.this);
                 List<String> mismatches = ModelIntegrityChecker.getMismatches(modelDir, modelName);
                 runOnUiThread(() -> {
+                    if (mWhisper == null || isFinishing() || isDestroyed()) return;
                     if (mismatches.isEmpty()) {
                         mWhisper.loadModel();
                     } else {
                         String fileList = android.text.TextUtils.join(", ", mismatches);
-                        new AlertDialog.Builder(WhisperRecognizeActivity.this)
+                        integrityMismatchDialog = new AlertDialog.Builder(WhisperRecognizeActivity.this)
                                 .setTitle("Model fingerprint mismatch")
                                 .setMessage(
                                         "The model files do not match the known " +
@@ -368,10 +370,13 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
                                         "file corruption or replacement." +
                                         "\n\nFile(s): " + fileList +
                                         "\n\nContinue using this model?")
-                                .setPositiveButton("Continue", (d, w) -> mWhisper.loadModel())
+                                .setPositiveButton("Continue", (d, w) -> { if (mWhisper != null) mWhisper.loadModel(); })
                                 .setNegativeButton("Cancel", (d, w) -> finish())
                                 .setCancelable(false)
-                                .show();
+                                .create();
+                        if (!isFinishing() && !isDestroyed()) {
+                            integrityMismatchDialog.show();
+                        }
                     }
                 });
             }, "integrity-check").start();
@@ -470,6 +475,9 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
 
     @Override
     public void onDestroy() {
+        if (integrityMismatchDialog != null && integrityMismatchDialog.isShowing()) {
+            integrityMismatchDialog.dismiss();
+        }
         deinitModel();
         if (mRecorder != null) {
             if (mRecorder.isInProgress()) {

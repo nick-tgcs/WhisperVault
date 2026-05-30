@@ -72,6 +72,7 @@ public class MainActivity extends AppCompatActivity {
 
     private Recorder mRecorder = null;
     private Whisper mWhisper = null;
+    private AlertDialog integrityMismatchDialog = null;
 
     private SharedPreferences sp = null;
 
@@ -81,6 +82,9 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        if (integrityMismatchDialog != null && integrityMismatchDialog.isShowing()) {
+            integrityMismatchDialog.dismiss();
+        }
         deinitModel();
         deinitTTS();
         super.onDestroy();
@@ -326,11 +330,12 @@ public class MainActivity extends AppCompatActivity {
             String modelName = ModelIntegrityChecker.getSelectedModel(MainActivity.this);
             List<String> mismatches = ModelIntegrityChecker.getMismatches(modelDir, modelName);
             runOnUiThread(() -> {
+                if (mWhisper == null || isFinishing() || isDestroyed()) return;
                 if (mismatches.isEmpty()) {
                     mWhisper.loadModel();
                 } else {
                     String fileList = android.text.TextUtils.join(", ", mismatches);
-                    new AlertDialog.Builder(this)
+                    integrityMismatchDialog = new AlertDialog.Builder(this)
                             .setTitle("Model fingerprint mismatch")
                             .setMessage(
                                     "The model files on this device do not match the known " +
@@ -339,13 +344,16 @@ public class MainActivity extends AppCompatActivity {
                                     "indicate file corruption or replacement." +
                                     "\n\nFile(s): " + fileList +
                                     "\n\nContinue using this model?")
-                            .setPositiveButton("Continue", (d, w) -> mWhisper.loadModel())
+                            .setPositiveButton("Continue", (d, w) -> { if (mWhisper != null) mWhisper.loadModel(); })
                             .setNegativeButton("Cancel", (d, w) -> {
                                 deinitModel();
                                 startActivity(new Intent(MainActivity.this, SetupActivity.class));
                             })
                             .setCancelable(false)
-                            .show();
+                            .create();
+                    if (!isFinishing() && !isDestroyed()) {
+                        integrityMismatchDialog.show();
+                    }
                 }
             });
         }, "integrity-check").start();
