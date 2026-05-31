@@ -13,8 +13,9 @@ name: Build & Release
 #
 # A guard job checks for unreleased commits before building so that concurrent
 # trigger firings (e.g. watchdog dispatch + pull_request event) never
-# double-bump the version. The concurrency group serialises them; the guard
-# ensures the second one exits cleanly once the first has tagged HEAD.
+# double-bump the version. Workflow-level concurrency serialises entire runs so
+# the second run's guard executes only after the first run has tagged HEAD;
+# the guard then sees 0 unreleased commits and exits cleanly.
 #
 # Why combined: GITHUB_TOKEN-pushed tags cannot trigger other workflows, so
 # everything must stay in one workflow.
@@ -38,15 +39,26 @@ env:
 permissions:
   contents: write
 
+# Serialise entire workflow runs so that when two triggers fire close together
+# (e.g. pull_request event + watchdog dispatch), the second run's guard job
+# executes only after the first run has finished and pushed its tag. Without
+# this, both guards could compute should_release=true before either tag lands.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   guard:
     name: Check for unreleased commits
     runs-on: ubuntu-latest
-    # Ignore PR closes that weren't merges
+    # Ignore PR closes that weren't merges; ignore PRs from external forks
+    # (they lack secrets and write access — the watchdog will catch those cases)
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) ||
-      (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.merged == true &&
+       github.event.pull_request.head.repo.full_name == github.repository)
     outputs:
       should_release: ${{ steps.check.outputs.should_release }}
     steps:
@@ -90,17 +102,20 @@ jobs:
     needs: guard
     if: needs.guard.outputs.should_release == 'true'
     runs-on: ubuntu-latest
-    # Serialize so concurrent triggers (e.g. watchdog dispatch + pull_request event)
-    # don't race to create the same tag; cancel-in-progress false so the second
-    # run still executes and exits cleanly via the guard
-    concurrency:
-      group: release
-      cancel-in-progress: false
+    # Workflow-level concurrency (above) handles serialisation; no job-level block needed.
 
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
+          # PR event   → merge_commit_sha (the actual master commit after merge)
+          # blank dispatch → refs/heads/master (consistent with guard checkout)
+          # tag push / explicit-tag dispatch → github.sha (already points at the tag)
+          ref: >-
+            ${{ github.event_name == 'pull_request' &&
+                  github.event.pull_request.merge_commit_sha ||
+                (github.event_name == 'workflow_dispatch' && inputs.tag == '') &&
+                  'refs/heads/master' ||
+                github.sha }}
           submodules: true
           fetch-depth: 0   # full history needed to enumerate tags
 
