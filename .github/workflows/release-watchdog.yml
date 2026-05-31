@@ -1,0 +1,52 @@
+name: Release Watchdog
+
+# Backstop for the primary pull_request trigger in release.yml.
+# Runs every 4 hours and dispatches release.yml if master has commits that
+# haven't been released yet — guards against the silent push-event delivery
+# failures seen in this repo (PR #4, PR #7).
+#
+# The guard job inside release.yml handles any race between this dispatch
+# and a concurrent pull_request trigger so no double-release can occur.
+
+on:
+  schedule:
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write   # required to dispatch release.yml
+
+jobs:
+  watchdog:
+    name: Check and dispatch if unreleased
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: refs/heads/master
+          fetch-depth: 0
+
+      - name: Check for unreleased commits
+        id: check
+        run: |
+          LATEST_TAG=$(git tag -l 'v[0-9][0-9][0-9][0-9].*' | sort -V | tail -1)
+          if [[ -z "$LATEST_TAG" ]]; then
+            echo "No release tags found — dispatching for first release."
+            echo "dispatch=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          UNRELEASED=$(git rev-list "${LATEST_TAG}..HEAD" --count)
+          echo "Unreleased commits since ${LATEST_TAG}: ${UNRELEASED}"
+          if [[ "$UNRELEASED" -gt 0 ]]; then
+            echo "dispatch=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "dispatch=false" >> "$GITHUB_OUTPUT"
+            echo "Master is already released — nothing to do."
+          fi
+
+      - name: Dispatch release workflow
+        if: steps.check.outputs.dispatch == 'true'
+        run: gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref master
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,18 +1,30 @@
 name: Build & Release
 
 # Triggers:
-#   1. push to master      → auto-computes next vYYYY.MM.N tag, builds & releases
-#   2. push of a v* tag    → uses that tag (manual tag push fallback)
-#   3. workflow_dispatch   → manual trigger; pass a tag to release an existing
-#                            tag (e.g. v2026.05.1) or leave blank to auto-compute
+#   1. pull_request closed+merged to master  → primary auto-release path
+#   2. push of a v* tag                      → explicit tag fallback
+#   3. workflow_dispatch                      → manual; pass a tag or leave blank to auto-compute
+#
+# Why pull_request instead of push to master: GitHub unreliably delivered
+# push events in this repo (PR #4, PR #7 both silently dropped). The
+# pull_request closed+merged event is a first-class dedicated webhook — far
+# more reliable. The scheduled watchdog (release-watchdog.yml) is a backstop
+# in case this event also misfires.
+#
+# A guard job checks for unreleased commits before building so that concurrent
+# trigger firings (e.g. watchdog dispatch + pull_request event) never
+# double-bump the version. Workflow-level concurrency serialises entire runs so
+# the second run's guard executes only after the first run has tagged HEAD;
+# the guard then sees 0 unreleased commits and exits cleanly.
 #
 # Why combined: GITHUB_TOKEN-pushed tags cannot trigger other workflows, so
-# auto-version.yml pushing a tag would never fire release.yml.  Doing
-# everything in one job sidesteps that GitHub limitation entirely.
+# everything must stay in one workflow.
 
 on:
-  push:
+  pull_request:
     branches: [master]
+    types: [closed]
+  push:
     tags: ['v*']
   workflow_dispatch:
     inputs:
@@ -27,24 +39,83 @@ env:
 permissions:
   contents: write
 
+# Serialise entire workflow runs so that when two triggers fire close together
+# (e.g. pull_request event + watchdog dispatch), the second run's guard job
+# executes only after the first run has finished and pushed its tag. Without
+# this, both guards could compute should_release=true before either tag lands.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
-  release:
-    name: Build & Release
+  guard:
+    name: Check for unreleased commits
     runs-on: ubuntu-latest
-    # Serialize runs so concurrent auto-computes don't race to create the same tag
-    concurrency:
-      group: release
-      cancel-in-progress: false
-    # Skip master pushes whose head commit contains [skip ci]; always run on tags/dispatch
+    # Ignore PR closes that weren't merges; ignore PRs from external forks
+    # (they lack secrets and write access — the watchdog will catch those cases)
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/master' &&
-       !contains(github.event.head_commit.message, '[skip ci]'))
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.merged == true &&
+       github.event.pull_request.head.repo.full_name == github.repository)
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: refs/heads/master
+          fetch-depth: 0
+
+      - name: Check for unreleased commits
+        id: check
+        run: |
+          # Tag pushes and explicit-tag dispatches are always intentional — skip guard
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "Tag push — releasing unconditionally."
+            exit 0
+          fi
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.tag }}" ]]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "Explicit-tag dispatch — releasing unconditionally."
+            exit 0
+          fi
+          # For PR merge or blank dispatch: skip if HEAD is already tagged
+          LATEST_TAG=$(git tag -l 'v[0-9][0-9][0-9][0-9].*' | sort -V | tail -1)
+          if [[ -z "$LATEST_TAG" ]]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "No release tags yet — proceeding with first release."
+            exit 0
+          fi
+          UNRELEASED=$(git rev-list "${LATEST_TAG}..HEAD" --count)
+          echo "Unreleased commits since ${LATEST_TAG}: ${UNRELEASED}"
+          if [[ "$UNRELEASED" -gt 0 ]]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "HEAD is already released — skipping build."
+          fi
+
+  release:
+    name: Build & Release
+    needs: guard
+    if: needs.guard.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    # Workflow-level concurrency (above) handles serialisation; no job-level block needed.
 
     steps:
       - uses: actions/checkout@v6
         with:
+          # PR event   → merge_commit_sha (the actual master commit after merge)
+          # blank dispatch → refs/heads/master (consistent with guard checkout)
+          # tag push / explicit-tag dispatch → github.sha (already points at the tag)
+          ref: >-
+            ${{ github.event_name == 'pull_request' &&
+                  github.event.pull_request.merge_commit_sha ||
+                (github.event_name == 'workflow_dispatch' && inputs.tag == '') &&
+                  'refs/heads/master' ||
+                github.sha }}
           submodules: true
           fetch-depth: 0   # full history needed to enumerate tags
 
@@ -66,7 +137,7 @@ jobs:
             # Triggered by a tag push
             TAG="${GITHUB_REF#refs/tags/}"
           else
-            # Auto-compute next vYYYY.MM.N tag for push-to-master or blank dispatch
+            # Auto-compute next vYYYY.MM.N tag for PR merge or blank dispatch
             YEAR=$(date -u +%Y)
             MONTH=$(date -u +%m)
             PREFIX="v${YEAR}.${MONTH}."
